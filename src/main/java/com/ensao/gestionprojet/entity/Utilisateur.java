@@ -39,7 +39,7 @@ public class Utilisateur {
 
     @Column(nullable = false)
     @Builder.Default
-    private Boolean estActif = true;
+    private Boolean estActif = false;
 
     // Relations
     @OneToMany(mappedBy = "createur", fetch = FetchType.LAZY)
