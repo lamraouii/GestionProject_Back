@@ -1,5 +1,7 @@
 package com.ensao.gestionprojet.controller;
 
+import com.ensao.gestionprojet.dto.LoginRequestDto;
+import com.ensao.gestionprojet.dto.LoginResponseDto;
 import com.ensao.gestionprojet.dto.RegisterRequestDto;
 import com.ensao.gestionprojet.dto.RegisterResponseDto;
 import com.ensao.gestionprojet.service.UtilisateurService;
@@ -25,6 +27,13 @@ public class AuthController {
     ) {
         return utilisateurService
                 .confirmToken(token);
+    }
+
+    @PostMapping("/login")
+    public LoginResponseDto login(
+            @RequestBody LoginRequestDto request
+    ) {
+        return utilisateurService.login(request);
     }
 
 }
