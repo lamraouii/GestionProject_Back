@@ -36,4 +36,24 @@ public class EmailServiceImpl implements EmailService {
 
         mailSender.send(message);
     }
+
+    @Override
+    public void sendInvitationEmail(String to, String entrepriseName) {
+
+        String subject = "Invitation à rejoindre " + entrepriseName;
+
+        String body = "Vous avez été invité à rejoindre l'entreprise: "
+                + entrepriseName
+                + ". Connectez-vous pour accepter l'invitation.";
+
+        SimpleMailMessage msg =new SimpleMailMessage();
+        msg.setTo(to);
+        msg.setSubject(subject);
+        msg.setText(body);
+        System.out.println("Before email");
+        mailSender.send(msg);
+        System.out.println("After email");
+
+    }
+
 }

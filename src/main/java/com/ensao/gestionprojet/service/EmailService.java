@@ -6,4 +6,5 @@ public interface EmailService {
             String to,
             String confirmationLink
     );
+    void sendInvitationEmail(String to, String entrepriseName);
 }
