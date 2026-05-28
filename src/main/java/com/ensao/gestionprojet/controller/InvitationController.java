@@ -27,4 +27,24 @@ public class InvitationController {
 
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/invitations/{id}/accept")
+    public ResponseEntity<String> accepterInvitation(
+            @PathVariable Long id
+    ) {
+
+        invitationService.accepterInvitation(id);
+
+        return ResponseEntity.ok("Invitation acceptée");
+    }
+
+    @PostMapping("/invitations/{id}/reject")
+    public ResponseEntity<String> refuserInvitation(
+            @PathVariable Long id
+    ) {
+
+        invitationService.refuserInvitation(id);
+
+        return ResponseEntity.ok("Invitation refusée");
+    }
 }

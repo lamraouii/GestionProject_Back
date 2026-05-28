@@ -11,6 +11,7 @@ import com.ensao.gestionprojet.repository.MembreEntrepriseRepository;
 import com.ensao.gestionprojet.repository.UtilisateurRepo;
 import com.ensao.gestionprojet.service.EmailService;
 import com.ensao.gestionprojet.service.InvitationService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -41,8 +42,6 @@ public class InvitationServiceImpl implements InvitationService {
         Entreprise entreprise = entrepriseRepository.findById(entrepriseId)
                 .orElseThrow(() -> new RuntimeException("Entreprise introuvable"));
 
-System.out.println("CONNECTED EMAIL: " + emailAdmin);
-System.out.println("ENTREPRISE ID: " + entrepriseId);
         // 3. check ADMIN rights
         MembreEntreprise adminMembership = membreEntrepriseRepository
                 .findByUtilisateurIdAndEntrepriseId(admin.getId(), entrepriseId)
@@ -51,7 +50,7 @@ System.out.println("ENTREPRISE ID: " + entrepriseId);
         if (!adminMembership.getRole().equals(RoleEntreprise.ADMIN)) {
             throw new RuntimeException("Seuls les ADMIN peuvent inviter");
         }
-System.out.println("ROLE: " + adminMembership.getRole());
+
         // 4. find invited user
         Utilisateur invitedUser = utilisateurRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Utilisateur invité introuvable"));
@@ -83,4 +82,78 @@ System.out.println("ROLE: " + adminMembership.getRole());
         );
 
 }
+
+    @Override
+    @Transactional
+    public void accepterInvitation(Long invitationId) {
+
+        // 1. authenticated user
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        Utilisateur utilisateur = utilisateurRepository
+                .findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        // 2. invitation
+        MembreEntreprise invitation = membreEntrepriseRepository
+                .findById(invitationId)
+                .orElseThrow(() -> new RuntimeException("Invitation introuvable"));
+
+        // 3. verify ownership
+        if (!invitation.getUtilisateur().getId().equals(utilisateur.getId())) {
+            throw new RuntimeException("Accès refusé");
+        }
+
+        // 4. verify status
+        if (!invitation.getStatut().equals(StatutInvitation.PENDING)) {
+            throw new RuntimeException("Invitation déjà traitée");
+        }
+
+        // 5. accept invitation
+        invitation.setStatut(StatutInvitation.ACCEPTED);
+
+        invitation.setDateReponse(LocalDateTime.now());
+
+        membreEntrepriseRepository.save(invitation);
+    }
+
+    @Override
+    @Transactional
+    public void refuserInvitation(Long invitationId) {
+
+        // 1. authenticated user
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        Utilisateur utilisateur = utilisateurRepository
+                .findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        // 2. invitation
+        MembreEntreprise invitation = membreEntrepriseRepository
+                .findById(invitationId)
+                .orElseThrow(() -> new RuntimeException("Invitation introuvable"));
+
+        // 3. verify ownership
+        if (!invitation.getUtilisateur().getId().equals(utilisateur.getId())) {
+            throw new RuntimeException("Accès refusé");
+        }
+
+        // 4. verify status
+        if (!invitation.getStatut().equals(StatutInvitation.PENDING)) {
+            throw new RuntimeException("Invitation déjà traitée");
+        }
+
+        // 5. reject invitation
+        invitation.setStatut(StatutInvitation.REJECTED);
+
+        invitation.setDateReponse(LocalDateTime.now());
+
+        membreEntrepriseRepository.save(invitation);
+    }
 }
