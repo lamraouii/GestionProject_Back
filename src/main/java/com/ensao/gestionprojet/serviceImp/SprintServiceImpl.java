@@ -1,0 +1,191 @@
+package com.ensao.gestionprojet.serviceImp;
+
+import com.ensao.gestionprojet.dto.AddTachesSprintRequestDto;
+import com.ensao.gestionprojet.dto.CreateSprintRequestDto;
+import com.ensao.gestionprojet.dto.DisponibiliteMembreRequestDto;
+import com.ensao.gestionprojet.dto.SprintResponseDto;
+import com.ensao.gestionprojet.entity.*;
+import com.ensao.gestionprojet.enums.*;
+import com.ensao.gestionprojet.repository.*;
+import com.ensao.gestionprojet.service.AuthHelper;
+import com.ensao.gestionprojet.service.SprintService;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class SprintServiceImpl implements SprintService {
+
+    private final SprintRepository sprintRepository;
+    private final ProjetRepository projetRepository;
+    private final MembreProjetRepository membreProjetRepository;
+    private final TacheRepository tacheRepository;
+    private final DisponibiliteMembreRepository disponibiliteMembreRepository;
+    private final UtilisateurRepo utilisateurRepository;
+    private final AuthHelper authHelper;
+
+    // ============================================================
+    //  US13 — Créer un sprint (MANAGER)
+    // ============================================================
+    @Override
+    @Transactional
+    public SprintResponseDto creerSprint(CreateSprintRequestDto request) {
+
+        Utilisateur createur = authHelper.getUtilisateurCourant();
+
+        Projet projet = projetRepository.findById(request.getProjetId())
+                .orElseThrow(() -> new RuntimeException("Projet introuvable"));
+
+        // Vérifier que le projet est ACTIVE
+        if (projet.getStatut() != StatutProjet.ACTIVE) {
+            throw new RuntimeException("Impossible de créer un sprint — le projet n'est pas actif");
+        }
+
+        // Vérifier que l'utilisateur courant est MANAGER du projet
+        verifierManager(createur.getId(), projet.getId());
+
+        // Contrainte métier : dateFin > dateDebut
+        if (!request.getDateFin().isAfter(request.getDateDebut())) {
+            throw new RuntimeException("La date de fin doit être strictement supérieure à la date de début");
+        }
+
+        Sprint sprint = Sprint.builder()
+                .projet(projet)
+                .nom(request.getNom())
+                .objectif(request.getObjectif())
+                .dateDebut(request.getDateDebut())
+                .dateFin(request.getDateFin())
+                .statut(StatutSprint.PLANNED)
+                .createur(createur)
+                .build();
+
+        Sprint savedSprint = sprintRepository.save(sprint);
+
+        return toDto(savedSprint);
+    }
+
+    // ============================================================
+    //  US14 — Ajouter des tâches au sprint (MANAGER)
+    // ============================================================
+    @Override
+    @Transactional
+    public SprintResponseDto ajouterTaches(Long sprintId, AddTachesSprintRequestDto request) {
+
+        Utilisateur manager = authHelper.getUtilisateurCourant();
+
+        Sprint sprint = sprintRepository.findById(sprintId)
+                .orElseThrow(() -> new RuntimeException("Sprint introuvable"));
+
+        Projet projet = sprint.getProjet();
+
+        // Vérifier que l'utilisateur courant est MANAGER du projet
+        verifierManager(manager.getId(), projet.getId());
+
+        // Associer chaque tâche
+        for (Long tacheId : request.getTacheIds()) {
+            Tache tache = tacheRepository.findById(tacheId)
+                    .orElseThrow(() -> new RuntimeException("Tâche introuvable avec l'ID : " + tacheId));
+
+            // Vérifier que la tâche appartient au même projet
+            if (!tache.getProjet().getId().equals(projet.getId())) {
+                throw new RuntimeException("La tâche " + tache.getTitre() + " n'appartient pas à ce projet");
+            }
+
+            // Vérifier que la tâche est au statut TODO
+            if (tache.getStatut() != StatutTache.TODO) {
+                throw new RuntimeException("Seules les tâches au statut TODO peuvent être ajoutées à un sprint");
+            }
+
+            tache.setSprint(sprint);
+            tacheRepository.save(tache);
+        }
+
+        return toDto(sprint);
+    }
+
+    // ============================================================
+    //  US15 — Définir la disponibilité des membres (MANAGER)
+    // ============================================================
+    @Override
+    @Transactional
+    public void definirDisponibilite(Long sprintId, List<DisponibiliteMembreRequestDto> request) {
+
+        Utilisateur manager = authHelper.getUtilisateurCourant();
+
+        Sprint sprint = sprintRepository.findById(sprintId)
+                .orElseThrow(() -> new RuntimeException("Sprint introuvable"));
+
+        Projet projet = sprint.getProjet();
+
+        // Vérifier que l'utilisateur courant est MANAGER du projet
+        verifierManager(manager.getId(), projet.getId());
+
+        for (DisponibiliteMembreRequestDto item : request) {
+            Utilisateur targetUser = utilisateurRepository.findById(item.getUtilisateurId())
+                    .orElseThrow(() -> new RuntimeException("Utilisateur introuvable avec l'ID : " + item.getUtilisateurId()));
+
+            // Vérifier que l'utilisateur cible est membre ACCEPTED du projet
+            membreProjetRepository.findByUtilisateurIdAndProjetIdAndStatut(
+                    targetUser.getId(), projet.getId(), StatutInvitation.ACCEPTED)
+                    .orElseThrow(() -> new RuntimeException("L'utilisateur " + targetUser.getPrenom() + " " + targetUser.getNom() + " n'est pas membre actif de ce projet"));
+
+            // Trouver ou créer la disponibilité
+            DisponibiliteMembre disponibilite = disponibiliteMembreRepository
+                    .findBySprintIdAndUtilisateurId(sprint.getId(), targetUser.getId())
+                    .orElseGet(() -> DisponibiliteMembre.builder()
+                            .sprint(sprint)
+                            .utilisateur(targetUser)
+                            .build());
+
+            disponibilite.setHeuresDisponibles(item.getHeuresDisponibles());
+            disponibiliteMembreRepository.save(disponibilite);
+        }
+    }
+
+    // ============================================================
+    //  Récupérer tous les sprints d'un projet
+    // ============================================================
+    @Override
+    public List<SprintResponseDto> getSprintsProjet(Long projetId) {
+
+        Utilisateur utilisateur = authHelper.getUtilisateurCourant();
+
+        // Vérifier que l'utilisateur est membre ACCEPTED du projet
+        membreProjetRepository.findByUtilisateurIdAndProjetIdAndStatut(
+                utilisateur.getId(), projetId, StatutInvitation.ACCEPTED)
+                .orElseThrow(() -> new RuntimeException("Accès refusé — vous n'êtes pas membre de ce projet"));
+
+        return sprintRepository.findByProjetId(projetId)
+                .stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    // ============================================================
+    //  Helpers privés
+    // ============================================================
+
+    private void verifierManager(Long utilisateurId, Long projetId) {
+        membreProjetRepository.findByUtilisateurIdAndProjetIdAndRole(utilisateurId, projetId, RoleProjet.MANAGER)
+                .orElseThrow(() -> new RuntimeException("Seul le Manager du projet peut effectuer cette action"));
+    }
+
+    private SprintResponseDto toDto(Sprint sprint) {
+        return SprintResponseDto.builder()
+                .id(sprint.getId())
+                .nom(sprint.getNom())
+                .objectif(sprint.getObjectif())
+                .dateDebut(sprint.getDateDebut())
+                .dateFin(sprint.getDateFin())
+                .statut(sprint.getStatut().name())
+                .projetId(sprint.getProjet().getId())
+                .velocite(sprint.getVelocite())
+                .dateCreation(sprint.getDateCreation())
+                .build();
+    }
+}
