@@ -3,6 +3,7 @@ package com.ensao.gestionprojet.controller;
 import com.ensao.gestionprojet.dto.CreateTacheRequestDto;
 import com.ensao.gestionprojet.dto.TacheResponseDto;
 import com.ensao.gestionprojet.dto.UpdateStatutTacheRequestDto;
+import com.ensao.gestionprojet.dto.KanbanBoardDto;
 import com.ensao.gestionprojet.service.TacheService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -75,6 +76,17 @@ public class TacheController {
             @PathVariable Long projetId
     ) {
         List<TacheResponseDto> response = tacheService.getTachesBacklog(projetId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * US23 — Obtenir la vue Kanban Board (Todo, In Progress, Done)
+     */
+    @GetMapping("/kanban/{projetId}")
+    public ResponseEntity<KanbanBoardDto> getKanbanBoard(
+            @PathVariable Long projetId
+    ) {
+        KanbanBoardDto response = tacheService.getKanbanBoard(projetId);
         return ResponseEntity.ok(response);
     }
 }
