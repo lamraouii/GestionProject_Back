@@ -3,6 +3,7 @@ package com.ensao.gestionprojet.serviceImp;
 import com.ensao.gestionprojet.dto.CreateTacheRequestDto;
 import com.ensao.gestionprojet.dto.TacheResponseDto;
 import com.ensao.gestionprojet.dto.UpdateStatutTacheRequestDto;
+import com.ensao.gestionprojet.dto.KanbanBoardDto;
 import com.ensao.gestionprojet.entity.*;
 import com.ensao.gestionprojet.enums.*;
 import com.ensao.gestionprojet.repository.*;
@@ -214,6 +215,44 @@ public class TacheServiceImpl implements TacheService {
                 .stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
+    }
+
+    // ============================================================
+    //  US23 — Obtenir la vue Kanban Board
+    // ============================================================
+    @Override
+    public KanbanBoardDto getKanbanBoard(Long projetId) {
+
+        Utilisateur utilisateur = authHelper.getUtilisateurCourant();
+
+        // Vérifier que l'utilisateur est membre ACCEPTED du projet
+        membreProjetRepository
+                .findByUtilisateurIdAndProjetIdAndStatut(
+                        utilisateur.getId(), projetId, StatutInvitation.ACCEPTED)
+                .orElseThrow(() -> new RuntimeException("Accès refusé — vous n'êtes pas membre de ce projet"));
+
+        List<Tache> tasks = tacheRepository.findByProjetId(projetId);
+
+        List<TacheResponseDto> todo = new java.util.ArrayList<>();
+        List<TacheResponseDto> inProgress = new java.util.ArrayList<>();
+        List<TacheResponseDto> done = new java.util.ArrayList<>();
+
+        for (Tache t : tasks) {
+            TacheResponseDto dto = toDto(t);
+            if (t.getStatut() == StatutTache.TODO) {
+                todo.add(dto);
+            } else if (t.getStatut() == StatutTache.IN_PROGRESS) {
+                inProgress.add(dto);
+            } else if (t.getStatut() == StatutTache.DONE) {
+                done.add(dto);
+            }
+        }
+
+        return KanbanBoardDto.builder()
+                .todo(todo)
+                .inProgress(inProgress)
+                .done(done)
+                .build();
     }
 
     // ============================================================

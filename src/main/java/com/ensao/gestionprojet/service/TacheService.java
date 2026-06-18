@@ -4,6 +4,8 @@ import com.ensao.gestionprojet.dto.CreateTacheRequestDto;
 import com.ensao.gestionprojet.dto.TacheResponseDto;
 import com.ensao.gestionprojet.dto.UpdateStatutTacheRequestDto;
 
+import com.ensao.gestionprojet.dto.KanbanBoardDto;
+
 import java.util.List;
 
 public interface TacheService {
@@ -22,4 +24,7 @@ public interface TacheService {
 
     /** Récupérer les tâches du backlog (sprint_id = NULL) */
     List<TacheResponseDto> getTachesBacklog(Long projetId);
+
+    /** US23 — Obtenir la vue Kanban Board */
+    KanbanBoardDto getKanbanBoard(Long projetId);
 }
