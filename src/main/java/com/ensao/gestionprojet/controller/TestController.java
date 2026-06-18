@@ -8,6 +8,6 @@ public class TestController {
 
     @GetMapping("/api/test")
     public String test() {
-        return "Backend is running 🚀";
+        return "JWT works successfully";
     }
 }

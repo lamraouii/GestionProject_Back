@@ -1,11 +1,15 @@
 package com.ensao.gestionprojet.serviceImp;
 
+import com.ensao.gestionprojet.dto.LoginRequestDto;
+import com.ensao.gestionprojet.dto.LoginResponseDto;
 import com.ensao.gestionprojet.dto.RegisterRequestDto;
 import com.ensao.gestionprojet.dto.RegisterResponseDto;
 import com.ensao.gestionprojet.entity.Utilisateur;
 import com.ensao.gestionprojet.exception.EmailAlreadyExistsException;
 import com.ensao.gestionprojet.exception.PasswordsDoNotMatchException;
 import com.ensao.gestionprojet.repository.UtilisateurRepo;
+import com.ensao.gestionprojet.security.JwtService;
+import com.ensao.gestionprojet.security.JwtService;
 import com.ensao.gestionprojet.service.EmailService;
 import com.ensao.gestionprojet.service.UtilisateurService;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +33,9 @@ public class UtilisateurServiceImpl implements UtilisateurService {
     private final ConfirmationTokenRepository confirmationTokenRepository;
     private final EmailService emailService;
 
+    private final JwtService jwtService;
+
+    // registration
     public RegisterResponseDto register(@RequestBody RegisterRequestDto request){
 
         // Chek wach kayen mail dejaa
@@ -134,6 +141,55 @@ public class UtilisateurServiceImpl implements UtilisateurService {
                 .save(confirmationToken);
 
         return "Compte confirmé avec succès";
+    }
+
+    // login
+
+    @Override
+    public LoginResponseDto login(
+            LoginRequestDto request
+    ) {
+
+        Utilisateur utilisateur =
+                utilisateurRepo
+                        .findByEmail(
+                                request.getEmail()
+                        )
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Email incorrect"
+                                )
+                        );
+
+        if(!utilisateur.getEstActif()) {
+
+            throw new RuntimeException(
+                    "Compte non confirmé"
+            );
+        }
+
+        boolean passwordMatches =
+                passwordEncoder.matches(
+                        request.getMotDePasse(),
+                        utilisateur.getMotDePasse()
+                );
+
+        if(!passwordMatches) {
+
+            throw new RuntimeException(
+                    "Mot de passe incorrect"
+            );
+        }
+
+        String token =
+                jwtService.generateToken(
+                        utilisateur.getEmail()
+                );
+
+        return LoginResponseDto.builder()
+                .token(token)
+                .message("Connexion réussie")
+                .build();
     }
 
 }

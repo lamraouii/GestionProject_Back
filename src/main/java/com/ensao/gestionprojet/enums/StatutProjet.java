@@ -1,7 +1,7 @@
 package com.ensao.gestionprojet.enums;
 
 public enum StatutProjet {
-    PRNDING,
+    PENDING,
     ACTIVE,
     REJECTED,
     ARCHIVED
