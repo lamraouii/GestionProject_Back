@@ -62,6 +62,10 @@ public class Tache {
     @JoinColumn(name = "createur_id", nullable = false)
     private Utilisateur createur;
 
+    private LocalDateTime dateDebutTravail;   // set when status → IN_PROGRESS
+
+    private LocalDateTime dateCompletion;      // set when status → DONE
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime dateCreation;
