@@ -1,9 +1,6 @@
 package com.ensao.gestionprojet.service;
 
-import com.ensao.gestionprojet.dto.AddTachesSprintRequestDto;
-import com.ensao.gestionprojet.dto.CreateSprintRequestDto;
-import com.ensao.gestionprojet.dto.DisponibiliteMembreRequestDto;
-import com.ensao.gestionprojet.dto.SprintResponseDto;
+import com.ensao.gestionprojet.dto.*;
 
 import java.util.List;
 
@@ -23,4 +20,11 @@ public interface SprintService {
 
     void activerSprint(Long sprintId);
 
+    SprintResponseDto getSprintActif(Long projetId);
+
+    void cloturerSprint(Long sprintId);
+
+    List<BurndownDto> getBurndownChart(Long sprintId);
+
+    List<VelocityDto> getHistoriqueVelocity(Long projetId);
 }

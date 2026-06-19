@@ -1,18 +1,20 @@
 package com.ensao.gestionprojet.serviceImp;
 
+import com.ensao.gestionprojet.dto.BurndownDto;
 import com.ensao.gestionprojet.dto.MetriquesDto;
 import com.ensao.gestionprojet.dto.WorkloadDto;
-import com.ensao.gestionprojet.entity.MembreProjet;
-import com.ensao.gestionprojet.entity.Tache;
-import com.ensao.gestionprojet.entity.Utilisateur;
+import com.ensao.gestionprojet.entity.*;
 import com.ensao.gestionprojet.enums.StatutInvitation;
 import com.ensao.gestionprojet.enums.StatutTache;
 import com.ensao.gestionprojet.helpers.AuthHelper;
+import com.ensao.gestionprojet.repository.BurndownSnapshotRepository;
 import com.ensao.gestionprojet.repository.MembreProjetRepository;
+import com.ensao.gestionprojet.repository.SprintRepository;
 import com.ensao.gestionprojet.repository.TacheRepository;
 import com.ensao.gestionprojet.service.DashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -25,6 +27,7 @@ public class DashboardServiceImpl implements DashboardService {
     private final TacheRepository tacheRepository;
     private final MembreProjetRepository membreProjetRepository;
     private final AuthHelper authHelper;
+
 
     // ============================================================
     //  US21 — Obtenir le workload des membres du projet
