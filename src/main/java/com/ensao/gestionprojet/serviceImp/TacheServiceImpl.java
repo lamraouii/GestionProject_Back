@@ -7,7 +7,6 @@ import com.ensao.gestionprojet.dto.KanbanBoardDto;
 import com.ensao.gestionprojet.entity.*;
 import com.ensao.gestionprojet.enums.*;
 import com.ensao.gestionprojet.repository.*;
-import com.ensao.gestionprojet.service.AuthHelper;
 import com.ensao.gestionprojet.service.TacheService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;

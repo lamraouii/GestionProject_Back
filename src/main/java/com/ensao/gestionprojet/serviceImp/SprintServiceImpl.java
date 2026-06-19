@@ -7,13 +7,11 @@ import com.ensao.gestionprojet.dto.SprintResponseDto;
 import com.ensao.gestionprojet.entity.*;
 import com.ensao.gestionprojet.enums.*;
 import com.ensao.gestionprojet.repository.*;
-import com.ensao.gestionprojet.service.AuthHelper;
 import com.ensao.gestionprojet.service.SprintService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 

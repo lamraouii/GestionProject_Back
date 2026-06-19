@@ -12,7 +12,10 @@ public interface MembreProjetRepository extends JpaRepository<MembreProjet, Long
 
     Optional<MembreProjet> findByUtilisateurIdAndProjetId(Long utilisateurId, Long projetId);
 
-    List<MembreProjet> findByProjetId(Long projetId);
+    List<MembreProjet> findByUtilisateurIdAndProjetEntrepriseId(
+            Long utilisateurId,
+            Long entrepriseId
+    );
 
     List<MembreProjet> findByProjetIdAndStatut(Long projetId, StatutInvitation statut);
 
