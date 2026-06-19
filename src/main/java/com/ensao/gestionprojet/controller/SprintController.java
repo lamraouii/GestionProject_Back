@@ -1,9 +1,6 @@
 package com.ensao.gestionprojet.controller;
 
-import com.ensao.gestionprojet.dto.AddTachesSprintRequestDto;
-import com.ensao.gestionprojet.dto.CreateSprintRequestDto;
-import com.ensao.gestionprojet.dto.DisponibiliteMembreRequestDto;
-import com.ensao.gestionprojet.dto.SprintResponseDto;
+import com.ensao.gestionprojet.dto.*;
 import com.ensao.gestionprojet.service.SprintService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -89,4 +86,15 @@ public class SprintController {
 
         return ResponseEntity.ok("Sprint clôturé avec succès");
     }
+
+
+    @GetMapping("/{sprintId}/burndown")
+    public ResponseEntity<List<BurndownDto>> getBurndown(
+            @PathVariable Long sprintId
+    ) {
+        return ResponseEntity.ok(
+                sprintService.getBurndownChart(sprintId)
+        );
+    }
+
 }

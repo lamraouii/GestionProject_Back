@@ -10,10 +10,10 @@ import com.ensao.gestionprojet.repository.*;
 import com.ensao.gestionprojet.service.SprintService;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,7 +30,10 @@ public class SprintServiceImpl implements SprintService {
     private final AuthHelper authHelper;
     private final SprintMapper sprintMapper;
 
+    private final BurndownSnapshotRepository burndownSnapshotRepository;
+
     VerifyManager vf = new VerifyManager(membreProjetRepository);
+
     // ============================================================
     //  US13 — Créer un sprint (MANAGER)
     // ============================================================
@@ -135,7 +138,7 @@ public class SprintServiceImpl implements SprintService {
 
             // Vérifier que l'utilisateur cible est membre ACCEPTED du projet
             membreProjetRepository.findByUtilisateurIdAndProjetIdAndStatut(
-                    targetUser.getId(), projet.getId(), StatutInvitation.ACCEPTED)
+                            targetUser.getId(), projet.getId(), StatutInvitation.ACCEPTED)
                     .orElseThrow(() -> new RuntimeException("L'utilisateur " + targetUser.getPrenom() + " " + targetUser.getNom() + " n'est pas membre actif de ce projet"));
 
             // Trouver ou créer la disponibilité
@@ -161,7 +164,7 @@ public class SprintServiceImpl implements SprintService {
 
         // Vérifier que l'utilisateur est membre ACCEPTED du projet
         membreProjetRepository.findByUtilisateurIdAndProjetIdAndStatut(
-                utilisateur.getId(), projetId, StatutInvitation.ACCEPTED)
+                        utilisateur.getId(), projetId, StatutInvitation.ACCEPTED)
                 .orElseThrow(() -> new RuntimeException("Accès refusé — vous n'êtes pas membre de ce projet"));
 
         return sprintRepository.findByProjetId(projetId)
@@ -169,7 +172,6 @@ public class SprintServiceImpl implements SprintService {
                 .map(sprintMapper::toDto)
                 .collect(Collectors.toList());
     }
-
 
 
     @Override
@@ -224,6 +226,7 @@ public class SprintServiceImpl implements SprintService {
         sprint.setStatut(
                 StatutSprint.ACTIVE
         );
+        enregistrerSnapshot(sprint);
 
         sprintRepository.save(
                 sprint
@@ -268,6 +271,8 @@ public class SprintServiceImpl implements SprintService {
                 })
                 .toList();
 
+        enregistrerSnapshot(sprint);
+
         return sprintMapper.toDtoWithTasks(sprint, taches);
     }
 
@@ -305,18 +310,64 @@ public class SprintServiceImpl implements SprintService {
         // 6. close sprint
         sprint.setStatut(StatutSprint.COMPLETED);
 
+        enregistrerSnapshot(sprint);
         sprintRepository.save(sprint);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BurndownDto> getBurndownChart(Long sprintId) {
+
+        // 1. user
+        Utilisateur user = authHelper.getUtilisateurCourant();
+
+        // 2. sprint
+        Sprint sprint = sprintRepository.findById(sprintId)
+                .orElseThrow(() -> new RuntimeException("Sprint introuvable"));
+
+        // 3. access check
+        membreProjetRepository.findByUtilisateurIdAndProjetId(
+                user.getId(),
+                sprint.getProjet().getId()
+        ).orElseThrow(() -> new RuntimeException("Accès refusé"));
+
+        // 4. fetch snapshots
+        List<BurndownSnapshot> snapshots =
+                burndownSnapshotRepository.findBySprintIdOrderByDateAsc(sprintId);
+
+        // 5. map to DTO
+        return snapshots.stream()
+                .map(s -> new BurndownDto(
+                        s.getDate(),
+                        s.getRemainingPoints()
+                ))
+                .toList();
     }
 
 
     // ============================================================
     //  Helpers privés
     // ============================================================
+    private void enregistrerSnapshot(Sprint sprint) {
 
+        int remainingPoints = sprint.getTaches()
+                .stream()
+                .filter(t -> t.getStatut() != StatutTache.DONE)
+                .mapToInt(Tache::getStoryPoints)
+                .sum();
+
+        BurndownSnapshot snapshot =
+                BurndownSnapshot.builder()
+                        .sprint(sprint)
+                        .date(LocalDate.now())
+                        .remainingPoints(remainingPoints)
+                        .build();
+
+        burndownSnapshotRepository.save(snapshot);
+    }
 //    private void verifierManager(Long utilisateurId, Long projetId) {
 //        membreProjetRepository.findByUtilisateurIdAndProjetIdAndRole(utilisateurId, projetId, RoleProjet.MANAGER)
 //                .orElseThrow(() -> new RuntimeException("Seul le Manager du projet peut effectuer cette action"));
 //    }
-
-
 }
+
