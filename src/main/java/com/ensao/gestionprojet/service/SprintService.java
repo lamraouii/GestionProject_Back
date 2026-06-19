@@ -25,4 +25,6 @@ public interface SprintService {
     void cloturerSprint(Long sprintId);
 
     List<BurndownDto> getBurndownChart(Long sprintId);
+
+    List<VelocityDto> getHistoriqueVelocity(Long projetId);
 }

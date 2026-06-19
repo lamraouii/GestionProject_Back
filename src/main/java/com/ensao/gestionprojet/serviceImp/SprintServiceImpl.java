@@ -345,6 +345,37 @@ public class SprintServiceImpl implements SprintService {
     }
 
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<VelocityDto> getHistoriqueVelocity(Long projetId) {
+
+        Utilisateur manager = authHelper.getUtilisateurCourant();
+
+        vf.verifierManager(
+                manager.getId(),
+                projetId
+        );
+
+        return sprintRepository
+                .findByProjetId(projetId)
+                .stream()
+                .filter(
+                        sprint ->
+                                sprint.getStatut()
+                                        == StatutSprint.COMPLETED
+                )
+                .map(
+                        sprint ->
+                                VelocityDto.builder()
+                                        .sprintId(sprint.getId())
+                                        .sprintNom(sprint.getNom())
+                                        .velocite(sprint.getVelocite())
+                                        .build()
+                )
+                .toList();
+    }
+
+
     // ============================================================
     //  Helpers privés
     // ============================================================

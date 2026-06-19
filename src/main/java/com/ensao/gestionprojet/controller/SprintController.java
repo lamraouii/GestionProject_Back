@@ -97,4 +97,17 @@ public class SprintController {
         );
     }
 
+    @GetMapping("/projets/{projetId}/velocity")
+    public ResponseEntity<List<VelocityDto>>
+    getHistoriqueVelocity(
+            @PathVariable Long projetId
+    ) {
+
+        return ResponseEntity.ok(
+                sprintService.getHistoriqueVelocity(
+                        projetId
+                )
+        );
+    }
+
 }
