@@ -4,6 +4,7 @@ import com.ensao.gestionprojet.dto.*;
 import com.ensao.gestionprojet.entity.*;
 import com.ensao.gestionprojet.enums.*;
 import com.ensao.gestionprojet.helpers.AuthHelper;
+import com.ensao.gestionprojet.helpers.VerifyManager;
 import com.ensao.gestionprojet.mapper.SprintMapper;
 import com.ensao.gestionprojet.repository.*;
 import com.ensao.gestionprojet.service.SprintService;
@@ -29,6 +30,7 @@ public class SprintServiceImpl implements SprintService {
     private final AuthHelper authHelper;
     private final SprintMapper sprintMapper;
 
+    VerifyManager vf = new VerifyManager(membreProjetRepository);
     // ============================================================
     //  US13 — Créer un sprint (MANAGER)
     // ============================================================
@@ -47,7 +49,7 @@ public class SprintServiceImpl implements SprintService {
         }
 
         // Vérifier que l'utilisateur courant est MANAGER du projet
-        verifierManager(createur.getId(), projet.getId());
+        vf.verifierManager(createur.getId(), projet.getId());
 
         // Contrainte métier : dateFin > dateDebut
         if (!request.getDateFin().isAfter(request.getDateDebut())) {
@@ -84,7 +86,7 @@ public class SprintServiceImpl implements SprintService {
         Projet projet = sprint.getProjet();
 
         // Vérifier que l'utilisateur courant est MANAGER du projet
-        verifierManager(manager.getId(), projet.getId());
+        vf.verifierManager(manager.getId(), projet.getId());
 
         // Associer chaque tâche
         for (Long tacheId : request.getTacheIds()) {
@@ -108,6 +110,7 @@ public class SprintServiceImpl implements SprintService {
         return sprintMapper.toDto(sprint);
     }
 
+
     // ============================================================
     //  US15 — Définir la disponibilité des membres (MANAGER)
     // ============================================================
@@ -122,8 +125,9 @@ public class SprintServiceImpl implements SprintService {
 
         Projet projet = sprint.getProjet();
 
+
         // Vérifier que l'utilisateur courant est MANAGER du projet
-        verifierManager(manager.getId(), projet.getId());
+        vf.verifierManager(manager.getId(), projet.getId());
 
         for (DisponibiliteMembreRequestDto item : request) {
             Utilisateur targetUser = utilisateurRepository.findById(item.getUtilisateurId())
@@ -266,14 +270,53 @@ public class SprintServiceImpl implements SprintService {
 
         return sprintMapper.toDtoWithTasks(sprint, taches);
     }
+
+    @Override
+    @Transactional
+    public void cloturerSprint(Long sprintId) {
+
+        // 1. user
+        Utilisateur user = authHelper.getUtilisateurCourant();
+
+        // 2. sprint
+        Sprint sprint = sprintRepository.findById(sprintId)
+                .orElseThrow(() -> new RuntimeException("Sprint introuvable"));
+
+        Long projetId = sprint.getProjet().getId();
+
+        // 3. check MANAGER
+        vf.verifierManager(user.getId(), projetId);
+
+
+        // 4. must be ACTIVE
+        if (sprint.getStatut() != StatutSprint.ACTIVE) {
+            throw new RuntimeException("Seul un sprint ACTIVE peut être clôturé");
+        }
+
+        // 5. compute velocity
+        int velocity = sprint.getTaches()
+                .stream()
+                .filter(t -> t.getStatut() == StatutTache.DONE)
+                .mapToInt(t -> t.getStoryPoints() == null ? 0 : t.getStoryPoints())
+                .sum();
+
+        sprint.setVelocite(velocity);
+
+        // 6. close sprint
+        sprint.setStatut(StatutSprint.COMPLETED);
+
+        sprintRepository.save(sprint);
+    }
+
+
     // ============================================================
     //  Helpers privés
     // ============================================================
 
-    private void verifierManager(Long utilisateurId, Long projetId) {
-        membreProjetRepository.findByUtilisateurIdAndProjetIdAndRole(utilisateurId, projetId, RoleProjet.MANAGER)
-                .orElseThrow(() -> new RuntimeException("Seul le Manager du projet peut effectuer cette action"));
-    }
+//    private void verifierManager(Long utilisateurId, Long projetId) {
+//        membreProjetRepository.findByUtilisateurIdAndProjetIdAndRole(utilisateurId, projetId, RoleProjet.MANAGER)
+//                .orElseThrow(() -> new RuntimeException("Seul le Manager du projet peut effectuer cette action"));
+//    }
 
 
 }

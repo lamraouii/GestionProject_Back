@@ -81,5 +81,12 @@ public class SprintController {
                 "Sprint activé avec succès"
         );
     }
-    
+
+    @PostMapping("/{sprintId}/close")
+    public ResponseEntity<String> cloturerSprint(@PathVariable Long sprintId) {
+
+        sprintService.cloturerSprint(sprintId);
+
+        return ResponseEntity.ok("Sprint clôturé avec succès");
+    }
 }

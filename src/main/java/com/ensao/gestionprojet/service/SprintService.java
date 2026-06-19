@@ -25,4 +25,5 @@ public interface SprintService {
 
     SprintResponseDto getSprintActif(Long projetId);
 
+    void cloturerSprint(Long sprintId);
 }
