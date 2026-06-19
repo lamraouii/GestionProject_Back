@@ -23,4 +23,6 @@ public interface SprintService {
 
     void activerSprint(Long sprintId);
 
+    SprintResponseDto getSprintActif(Long projetId);
+
 }

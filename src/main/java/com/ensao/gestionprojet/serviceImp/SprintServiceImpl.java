@@ -1,18 +1,17 @@
 package com.ensao.gestionprojet.serviceImp;
 
-import com.ensao.gestionprojet.dto.AddTachesSprintRequestDto;
-import com.ensao.gestionprojet.dto.CreateSprintRequestDto;
-import com.ensao.gestionprojet.dto.DisponibiliteMembreRequestDto;
-import com.ensao.gestionprojet.dto.SprintResponseDto;
+import com.ensao.gestionprojet.dto.*;
 import com.ensao.gestionprojet.entity.*;
 import com.ensao.gestionprojet.enums.*;
 import com.ensao.gestionprojet.helpers.AuthHelper;
+import com.ensao.gestionprojet.mapper.SprintMapper;
 import com.ensao.gestionprojet.repository.*;
 import com.ensao.gestionprojet.service.SprintService;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,6 +27,7 @@ public class SprintServiceImpl implements SprintService {
     private final DisponibiliteMembreRepository disponibiliteMembreRepository;
     private final UtilisateurRepo utilisateurRepository;
     private final AuthHelper authHelper;
+    private final SprintMapper sprintMapper;
 
     // ============================================================
     //  US13 — Créer un sprint (MANAGER)
@@ -66,7 +66,7 @@ public class SprintServiceImpl implements SprintService {
 
         Sprint savedSprint = sprintRepository.save(sprint);
 
-        return toDto(savedSprint);
+        return sprintMapper.toDto(savedSprint);
     }
 
     // ============================================================
@@ -105,7 +105,7 @@ public class SprintServiceImpl implements SprintService {
             tacheRepository.save(tache);
         }
 
-        return toDto(sprint);
+        return sprintMapper.toDto(sprint);
     }
 
     // ============================================================
@@ -162,7 +162,7 @@ public class SprintServiceImpl implements SprintService {
 
         return sprintRepository.findByProjetId(projetId)
                 .stream()
-                .map(this::toDto)
+                .map(sprintMapper::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -173,16 +173,7 @@ public class SprintServiceImpl implements SprintService {
     public void activerSprint(Long sprintId) {
 
         // 1. Current user
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
-
-        Utilisateur utilisateur = utilisateurRepository
-                .findByEmail(email)
-                .orElseThrow(() ->
-                        new RuntimeException("Utilisateur introuvable"));
-
+        Utilisateur utilisateur = authHelper.getUtilisateurCourant();
         // 2. Sprint
         Sprint sprint = sprintRepository
                 .findById(sprintId)
@@ -234,6 +225,47 @@ public class SprintServiceImpl implements SprintService {
                 sprint
         );
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SprintResponseDto getSprintActif(Long projetId) {
+
+        Utilisateur utilisateur = authHelper.getUtilisateurCourant();
+
+        membreProjetRepository
+                .findByUtilisateurIdAndProjetId(
+                        utilisateur.getId(),
+                        projetId
+                )
+                .orElseThrow(() ->
+                        new RuntimeException("Accès refusé"));
+
+        Sprint sprint = sprintRepository
+                .findByProjetIdAndStatut(
+                        projetId,
+                        StatutSprint.ACTIVE
+                )
+                .orElseThrow(() ->
+                        new RuntimeException("Aucun sprint actif"));
+
+        List<TacheResponseDto> taches = sprint.getTaches()
+                .stream()
+                .map(t -> {
+                    TacheResponseDto dto = new TacheResponseDto();
+                    dto.setId(t.getId());
+                    dto.setTitre(t.getTitre());
+                    dto.setStatut(t.getStatut());
+
+                    if (t.getUtilisateurAssigne() != null) {
+                        dto.setUtilisateurAssigneNom(t.getUtilisateurAssigne().getNom());
+                    }
+
+                    return dto;
+                })
+                .toList();
+
+        return sprintMapper.toDtoWithTasks(sprint, taches);
+    }
     // ============================================================
     //  Helpers privés
     // ============================================================
@@ -243,17 +275,5 @@ public class SprintServiceImpl implements SprintService {
                 .orElseThrow(() -> new RuntimeException("Seul le Manager du projet peut effectuer cette action"));
     }
 
-    private SprintResponseDto toDto(Sprint sprint) {
-        return SprintResponseDto.builder()
-                .id(sprint.getId())
-                .nom(sprint.getNom())
-                .objectif(sprint.getObjectif())
-                .dateDebut(sprint.getDateDebut())
-                .dateFin(sprint.getDateFin())
-                .statut(sprint.getStatut().name())
-                .projetId(sprint.getProjet().getId())
-                .velocite(sprint.getVelocite())
-                .dateCreation(sprint.getDateCreation())
-                .build();
-    }
+
 }

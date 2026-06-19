@@ -1,12 +1,15 @@
 package com.ensao.gestionprojet.dto;
 
-import lombok.Builder;
-import lombok.Getter;
+import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Builder
 public class SprintResponseDto {
 
@@ -17,6 +20,8 @@ public class SprintResponseDto {
     private LocalDate dateFin;
     private String statut;
     private Long projetId;
+    private String projetNom;
     private Integer velocite;
+    private List<TacheResponseDto> taches ;
     private LocalDateTime dateCreation;
 }
