@@ -116,7 +116,7 @@ public class DashboardAndKanbanScenariosTest {
         membreProjetRepository.save(MembreProjet.builder()
                 .utilisateur(userMember)
                 .projet(activeProject)
-                .role(RoleProjet.MEMBRE)
+                .role(RoleProjet.MEMBER)
                 .statut(StatutInvitation.ACCEPTED)
                 .dateAdhesion(LocalDateTime.now())
                 .build());

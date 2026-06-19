@@ -334,7 +334,7 @@ public class UserScenariosTest {
         membreProjetRepository.save(MembreProjet.builder()
                 .utilisateur(userMember)
                 .projet(proj)
-                .role(RoleProjet.MEMBRE)
+                .role(RoleProjet.MEMBER)
                 .statut(StatutInvitation.ACCEPTED)
                 .dateAdhesion(LocalDateTime.now())
                 .build());

@@ -7,6 +7,7 @@ import com.ensao.gestionprojet.entity.Tache;
 import com.ensao.gestionprojet.entity.Utilisateur;
 import com.ensao.gestionprojet.enums.StatutInvitation;
 import com.ensao.gestionprojet.enums.StatutTache;
+import com.ensao.gestionprojet.helpers.AuthHelper;
 import com.ensao.gestionprojet.repository.MembreProjetRepository;
 import com.ensao.gestionprojet.repository.TacheRepository;
 import com.ensao.gestionprojet.service.DashboardService;

@@ -5,6 +5,7 @@ import com.ensao.gestionprojet.dto.InviteMembreProjetRequestDto;
 import com.ensao.gestionprojet.dto.ProjetResponseDto;
 import com.ensao.gestionprojet.entity.*;
 import com.ensao.gestionprojet.enums.*;
+import com.ensao.gestionprojet.helpers.AuthHelper;
 import com.ensao.gestionprojet.repository.*;
 import com.ensao.gestionprojet.service.ProjetService;
 import jakarta.transaction.Transactional;
@@ -223,7 +224,7 @@ public class ProjetServiceImpl implements ProjetService {
         MembreProjet membreProjet = MembreProjet.builder()
                 .utilisateur(invitedUser)
                 .projet(projet)
-                .role(RoleProjet.MEMBRE)
+                .role(RoleProjet.MEMBER)
                 .statut(StatutInvitation.ACCEPTED)
                 .invitePar(manager)
                 .dateAdhesion(LocalDateTime.now())

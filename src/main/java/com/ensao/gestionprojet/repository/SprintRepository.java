@@ -13,7 +13,7 @@ public interface SprintRepository extends JpaRepository<Sprint, Long> {
 
     List<Sprint> findByProjetId(Long projetId);
 
-    Optional<Sprint> findByProjetIdAndStatut(Long projetId, StatutSprint statut);
+    Optional<Sprint> findByProjetIdAndStatut(Long projetId, StatutSprint statut) ;
 
     boolean existsByProjetIdAndStatut(Long projetId, StatutSprint statut);
 }

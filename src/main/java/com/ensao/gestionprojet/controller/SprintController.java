@@ -67,4 +67,19 @@ public class SprintController {
         List<SprintResponseDto> response = sprintService.getSprintsProjet(projetId);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/{sprintId}/activate")
+    public ResponseEntity<String> activerSprint(
+            @PathVariable Long sprintId
+    ) {
+
+        sprintService.activerSprint(
+                sprintId
+        );
+
+        return ResponseEntity.ok(
+                "Sprint activé avec succès"
+        );
+    }
+    
 }
