@@ -20,4 +20,7 @@ public interface SprintService {
 
     /** Récupérer tous les sprints d'un projet */
     List<SprintResponseDto> getSprintsProjet(Long projetId);
+
+    void activerSprint(Long sprintId);
+
 }

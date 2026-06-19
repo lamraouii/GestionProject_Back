@@ -6,10 +6,12 @@ import com.ensao.gestionprojet.dto.DisponibiliteMembreRequestDto;
 import com.ensao.gestionprojet.dto.SprintResponseDto;
 import com.ensao.gestionprojet.entity.*;
 import com.ensao.gestionprojet.enums.*;
+import com.ensao.gestionprojet.helpers.AuthHelper;
 import com.ensao.gestionprojet.repository.*;
 import com.ensao.gestionprojet.service.SprintService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -164,6 +166,74 @@ public class SprintServiceImpl implements SprintService {
                 .collect(Collectors.toList());
     }
 
+
+
+    @Override
+    @Transactional
+    public void activerSprint(Long sprintId) {
+
+        // 1. Current user
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        Utilisateur utilisateur = utilisateurRepository
+                .findByEmail(email)
+                .orElseThrow(() ->
+                        new RuntimeException("Utilisateur introuvable"));
+
+        // 2. Sprint
+        Sprint sprint = sprintRepository
+                .findById(sprintId)
+                .orElseThrow(() ->
+                        new RuntimeException("Sprint introuvable"));
+
+        Long projetId = sprint.getProjet().getId();
+
+        // 3. Verify MANAGER role
+        membreProjetRepository
+                .findByUtilisateurIdAndProjetIdAndRole(
+                        utilisateur.getId(),
+                        projetId,
+                        RoleProjet.MANAGER
+                )
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "Seul un MANAGER peut activer un sprint"
+                        ));
+
+        // 4. Sprint must be PLANNED
+        if (sprint.getStatut() != StatutSprint.PLANNED) {
+
+            throw new RuntimeException(
+                    "Seuls les sprints PLANNED peuvent être activés"
+            );
+        }
+
+        // 5. Only one ACTIVE sprint per project
+        boolean activeSprintExists =
+                sprintRepository.existsByProjetIdAndStatut(
+                        projetId,
+                        StatutSprint.ACTIVE
+                );
+
+        if (activeSprintExists) {
+
+            throw new RuntimeException(
+                    "Un sprint actif existe déjà pour ce projet"
+            );
+        }
+
+        // 6. Activate sprint
+        sprint.setStatut(
+                StatutSprint.ACTIVE
+        );
+
+        sprintRepository.save(
+                sprint
+        );
+    }
     // ============================================================
     //  Helpers privés
     // ============================================================
