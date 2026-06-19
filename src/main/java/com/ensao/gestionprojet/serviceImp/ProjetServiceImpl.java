@@ -6,7 +6,6 @@ import com.ensao.gestionprojet.dto.ProjetResponseDto;
 import com.ensao.gestionprojet.entity.*;
 import com.ensao.gestionprojet.enums.*;
 import com.ensao.gestionprojet.repository.*;
-import com.ensao.gestionprojet.service.AuthHelper;
 import com.ensao.gestionprojet.service.ProjetService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;

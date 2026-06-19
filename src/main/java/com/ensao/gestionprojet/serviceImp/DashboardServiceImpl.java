@@ -9,7 +9,6 @@ import com.ensao.gestionprojet.enums.StatutInvitation;
 import com.ensao.gestionprojet.enums.StatutTache;
 import com.ensao.gestionprojet.repository.MembreProjetRepository;
 import com.ensao.gestionprojet.repository.TacheRepository;
-import com.ensao.gestionprojet.service.AuthHelper;
 import com.ensao.gestionprojet.service.DashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

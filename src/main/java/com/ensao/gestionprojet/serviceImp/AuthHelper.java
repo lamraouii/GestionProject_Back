@@ -1,4 +1,4 @@
-package com.ensao.gestionprojet.service;
+package com.ensao.gestionprojet.serviceImp;
 
 import com.ensao.gestionprojet.entity.Utilisateur;
 import com.ensao.gestionprojet.repository.UtilisateurRepo;
