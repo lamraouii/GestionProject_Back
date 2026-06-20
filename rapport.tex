@@ -1,0 +1,718 @@
+\documentclass[12pt,a4paper]{report}
+
+%=================================================
+% PACKAGES
+%=================================================
+
+\usepackage[french]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{tocbibind}
+\usepackage{titlesec}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{xcolor}
+
+\geometry{margin=2.5cm}
+
+\begin{document}
+
+%=================================================
+% PAGE DE GARDE
+%=================================================
+
+\begin{titlepage}
+
+\begin{center}
+
+{\Large Royaume du Maroc}
+
+\vspace{0.5cm}
+
+{\Large Université Mohammed Premier}
+
+\vspace{0.5cm}
+
+{\Large École Nationale des Sciences Appliquées (ENSA Oujda)}
+
+\vspace{2cm}
+
+{\Huge \textbf{Rapport du Projet de Fin d'Année}}
+
+\vspace{1cm}
+
+{\Large \textbf{Développement d'une plateforme de gestion Agile basée sur Scrum}}
+
+\vspace{2.5cm}
+
+Réalisé par :
+
+\vspace{0.5cm}
+
+\textbf{Nom 1}
+
+\textbf{Nom 2}
+
+\vfill
+
+Encadré par :
+
+\vspace{0.5cm}
+
+\textbf{M. Belkasmi Mohammed Ghaouth}
+
+\vspace{1.5cm}
+
+Année universitaire : 2025-2026
+
+\end{center}
+
+\end{titlepage}
+
+%=================================================
+% REMERCIEMENTS
+%=================================================
+
+\chapter*{Remerciements}
+\addcontentsline{toc}{chapter}{Remerciements}
+
+Nous tenons tout d'abord à exprimer nos plus sincères remerciements à notre encadrant pédagogique, \textbf{M. Belkasmi Mohammed Ghaouth}, pour sa disponibilité, ses conseils précieux et son soutien continu tout au long de la réalisation de ce projet de fin d'année.
+
+Nos remerciements s'adressent également à l'ensemble du corps professoral et administratif de l'École Nationale des Sciences Appliquées d'Oujda (ENSA Oujda), pour la qualité de la formation théorique et pratique qu'ils nous ont dispensée.
+
+Enfin, nous tenons à remercier les membres du jury qui ont accepté d'évaluer notre travail et de nous faire part de leurs remarques constructives afin d'enrichir notre réflexion.
+
+%=================================================
+% RESUME
+%=================================================
+
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+
+Ce projet consiste à concevoir et développer une plateforme web complète permettant la gestion Agile de projets selon la méthodologie Scrum. Cette solution répond aux besoins des entreprises et des équipes qui souhaitent optimiser leur processus de développement logiciel en simplifiant la collaboration et en automatisant le suivi des indicateurs Scrum.
+
+L'architecture mise en œuvre repose sur un backend robuste développé en Java 21 avec le framework \textbf{Spring Boot 4.0.6}. La couche de persistance utilise JPA / Hibernate et communique avec une base de données relationnelle \textbf{PostgreSQL}. La sécurité des accès et des endpoints REST est assurée de manière robuste par un filtre de sécurité stateless basé sur \textbf{Spring Security} et des jetons cryptographiques \textbf{JWT} (JSON Web Tokens). Les communications initiales (inscription et invitations) s'appuient sur un service d'envoi d'e-mails asynchrones connecté à un serveur de test SMTP. Le frontend, quant à lui, est modélisé à l'aide de la bibliothèque \textbf{React}.
+
+L'application permet notamment :
+\begin{itemize}
+\item La gestion des entreprises et de leurs membres avec invitations sécurisées par e-mail.
+\item La création de projets d'entreprise soumis à la validation d'un Administrateur, ou de projets personnels indépendants.
+\item La planification et la gestion des sprints (sprint backlog, un seul sprint actif par projet).
+\item La création, la priorisation (de LOW à CRITICAL) et l'évaluation (en Story Points) des tâches, avec attribution aux membres du projet.
+\item Le suivi en temps réel de l'avancement via un tableau Kanban interactif.
+\item La génération dynamique d'indicateurs de performance Agile (workload des collaborateurs, calcul de la vélocité des sprints clôturés, ainsi que le calcul précis du Lead Time moyen et du Cycle Time moyen).
+\end{itemize}
+
+%=================================================
+% ABREVIATIONS
+%=================================================
+
+\chapter*{Liste des Abréviations}
+\addcontentsline{toc}{chapter}{Liste des Abréviations}
+
+\begin{longtable}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{Abréviation} & \textbf{Signification} \\ \hline
+API & Application Programming Interface \\ \hline
+JWT & JSON Web Token \\ \hline
+REST & Representational State Transfer \\ \hline
+UML & Unified Modeling Language \\ \hline
+CRUD & Create Read Update Delete \\ \hline
+PFA & Projet de Fin d'Année \\ \hline
+JPA & Jakarta Persistence API \\ \hline
+DTO & Data Transfer Object \\ \hline
+MVC & Model-View-Controller \\ \hline
+CORS & Cross-Origin Resource Sharing \\ \hline
+\end{longtable}
+
+%=================================================
+% TABLE DES MATIERES
+%=================================================
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+%=================================================
+% INTRODUCTION GENERALE
+%=================================================
+
+\chapter*{Introduction Générale}
+\addcontentsline{toc}{chapter}{Introduction Générale}
+
+Avec l'adoption croissante des méthodes Agiles au sein des structures de développement de logiciels, les outils permettant de piloter des projets selon le framework Scrum sont devenus indispensables. Les plateformes existantes proposent parfois des fonctionnalités complexes ou des barrières tarifaires élevées, ce qui pousse les organisations à concevoir des solutions sur mesure adaptées à leurs flux de travail.
+
+Dans ce contexte, notre projet de fin d'année consiste à concevoir et implémenter une plateforme de gestion de projet Agile. Cette solution centralise la gestion des comptes, la configuration des organisations (entreprises), la mise en place d'équipes projet, et l'exécution de sprints, tout en collectant des indicateurs métriques pour la prise de décision managériale.
+
+Les technologies clés mobilisées pour ce projet sont :
+\begin{itemize}
+\item \textbf{Spring Boot 4.0.6} : Framework principal pour l'exposition d'API REST.
+\item \textbf{Spring Security} \& \textbf{JWT} : Sécurisation de l'authentification et du contrôle d'accès.
+\item \textbf{JPA / Hibernate} : Mapping objet-relationnel.
+\item \textbf{PostgreSQL} : Système de gestion de base de données relationnelle.
+\item \textbf{Java 21} : Version du langage pour tirer parti des dernières optimisations.
+\item \textbf{React} : Framework frontal pour l'interface utilisateur dynamique.
+\item \textbf{Git \& GitHub} : Outils de contrôle de version et de collaboration.
+\end{itemize}
+
+%=================================================
+% CHAPITRE 1
+%=================================================
+
+\chapter{Contexte Général du Projet}
+
+\section{Présentation du contexte}
+
+La gestion de projet moderne s'est éloignée des approches prédictives lourdes (en cascade) au profit des méthodologies Agiles. Ces dernières valorisent l'adaptation au changement, les cycles de livraison courts et la rétroaction constante des utilisateurs finaux. Dans les structures universitaires et professionnelles, l'apprentissage pratique de Scrum à travers le développement d'outils collaboratifs est une étape structurante.
+
+\section{Problématique}
+
+Les équipes de projet rencontrent régulièrement des écueils nuisant à l'atteinte de leurs objectifs :
+\begin{itemize}
+\item \textbf{Dispersion des informations} : Difficulté à lier les objectifs stratégiques de l'entreprise aux tâches quotidiennes.
+\item \textbf{Manque de rigueur dans l'application de Scrum} : Autorisation de multiples sprints actifs simultanément, manque de validation formelle de la capacité disponible des membres de l'équipe.
+\item \textbf{Absence de visibilité sur les indicateurs de fluidité} : Mauvaise estimation du temps de traitement réel des fonctionnalités (Lead Time) et du temps de développement effectif (Cycle Time).
+\end{itemize}
+
+\section{Objectifs du projet}
+
+Pour répondre à ces problématiques, nous avons développé une plateforme web fournissant les outils indispensables au pilotage Scrum :
+\begin{itemize}
+\item \textbf{Hiérarchie organisationnelle} : Liens stricts entre entreprises, membres, projets, sprints et tâches.
+\item \textbf{Mécanisme de validation} : Approbation ou rejet des projets d'entreprise par un administrateur délégué.
+\item \textbf{Planification rationnelle} : Déclaration explicite de la disponibilité de chaque membre de l'équipe (en heures) pour chaque sprint individuel.
+\item \textbf{Métriques de flux} : Tableaux de bord automatiques calculant la vélocité et les moyennes temporelles des tâches complétées.
+\end{itemize}
+
+\section{Méthodologie adoptée}
+
+La méthodologie adoptée pour le pilotage de notre propre projet de fin d'année a été inspirée de Scrum. Nous avons fonctionné par itérations (sprints) de deux semaines, définissant des jalons précis pour le backend (conception de la base de données, implémentation de la sécurité JWT, écriture des contrôleurs et implémentations de services) et pour le frontend (intégration du Kanban et des tableaux de bord).
+
+\section{Conclusion}
+
+Ce premier chapitre a posé le cadre général de notre travail. Le chapitre suivant traitera de l'analyse des besoins fonctionnels et de la modélisation UML globale du système.
+
+%=================================================
+% CHAPITRE 2
+%=================================================
+
+\chapter{Analyse et Conception}
+
+\section{Identification des acteurs}
+
+Notre système identifie trois rôles principaux interagissant avec la plateforme :
+\begin{enumerate}
+\item \textbf{Administrateur d'Entreprise (ADMIN)} : C'est le créateur de l'entreprise ou un utilisateur désigné avec des droits étendus. Il gère les invitations des membres de l'entreprise et est responsable de la validation (acceptation/rejet) des projets d'entreprise créés par les managers.
+\item \textbf{Responsable de Projet (MANAGER)} : Il s'agit du créateur d'un projet spécifique. Le MANAGER a les pleins pouvoirs de planification sur son projet : invitation de collaborateurs, création de sprints, affectation et priorisation de tâches, planification de la disponibilité de l'équipe.
+\item \textbf{Membre d'Équipe (MEMBER)} : C'est un collaborateur accepté au sein d'un projet. Il dispose d'un accès aux données partagées (Kanban, Backlog, Métriques) et a la responsabilité d'initier le travail sur les tâches qui lui sont assignées et de les marquer comme terminées.
+\end{enumerate}
+
+\section{Besoins fonctionnels}
+
+Les exigences fonctionnelles majeures sont découpées en plusieurs modules :
+\begin{itemize}
+\item \textbf{Module d'Authentification} : Inscription d'utilisateurs, validation du compte par token unique envoyé par e-mail, connexion sécurisée avec génération de jeton JWT.
+\item \textbf{Module Entreprise} : Création d'une entreprise par un utilisateur authentifié, invitation de collaborateurs par e-mail, acceptation ou rejet de l'invitation par l'utilisateur invité.
+\item \textbf{Module Projet} : Création de projets personnels (actifs par défaut) et de projets d'entreprise (soumis à validation). Inviter des membres existants de l'entreprise à rejoindre l'équipe projet.
+\item \textbf{Module Sprint} : Création de sprints (PLANNED), planification du sprint backlog en associant des tâches (au statut TODO uniquement), déclaration des heures de disponibilité des collaborateurs.
+\item \textbf{Module Tâche \& Kanban} : Création de tâches avec attribution de story points et de priorités, affectation d'une tâche à un collaborateur qualifié, transition d'état de tâche (TODO, IN\_PROGRESS, DONE) avec suivi automatique des dates.
+\item \textbf{Module Dashboard} : Visualisation globale de l'état du projet, des indicateurs de flux (Lead Time moyen, Cycle Time moyen) et de la répartition de la charge de travail (workload).
+\end{itemize}
+
+\section{Besoins non fonctionnels}
+
+\begin{itemize}
+\item \textbf{Sécurité} : Hachage des mots de passe avec BCrypt, authentification sans état (stateless) via JWT transmise dans l'en-tête HTTP \verb|Authorization|.
+\item \textbf{Intégrité des données} : Gestion stricte des relations de base de données à travers des contraintes relationnelles JPA, validations d'intégrité (dates de fin postérieures aux dates de début, story points positifs).
+\item \textbf{Maintenabilité} : Utilisation du modèle DTO (Data Transfer Object) pour découpler la couche d'exposition REST du modèle de données physique (entités).
+\end{itemize}
+
+\section{Product Backlog}
+
+Le tableau suivant regroupe l'ensemble des récits utilisateurs (User Stories) implémentés :
+
+\begin{longtable}{|p{1.5cm}|p{7cm}|p{3.5cm}|p{2cm}|}
+\hline
+\textbf{Code} & \textbf{Description du besoin} & \textbf{Acteur} & \textbf{Priorité} \\ \hline
+US01 & Inscription sur la plateforme & Utilisateur & Haute \\ \hline
+US02 & Activation du compte via e-mail & Utilisateur & Haute \\ \hline
+US03 & Authentification et génération de JWT & Utilisateur & Haute \\ \hline
+US04 & Création d'une entreprise & Utilisateur & Haute \\ \hline
+US05 & Invitation et acceptation/refus au sein de l'entreprise & ADMIN / Utilisateur & Moyenne \\ \hline
+US06 & Création de projet personnel (actif immédiat) & Utilisateur & Moyenne \\ \hline
+US07 & Création de projet d'entreprise (statut PENDING) & Membre Entreprise & Haute \\ \hline
+US08 & Approbation ou rejet d'un projet d'entreprise & ADMIN Entreprise & Haute \\ \hline
+US09 & Invitation directe de membres à un projet & MANAGER Projet & Haute \\ \hline
+US10 & Création de tâches dans le backlog & MANAGER Projet & Haute \\ \hline
+US11 & Affectation d'une tâche à un membre du projet & MANAGER Projet & Haute \\ \hline
+US12 & Changement d'état de tâche (Kanban) & MANAGER / Assigné & Haute \\ \hline
+US13 & Création d'un sprint (PLANNED) & MANAGER Projet & Haute \\ \hline
+US14 & Ajout de tâches TODO au sprint & MANAGER Projet & Haute \\ \hline
+US15 & Déclaration de la disponibilité des membres & MANAGER Projet & Moyenne \\ \hline
+US21 & Consultation de la charge de travail (Workload) & Membre Projet & Moyenne \\ \hline
+US22 & Analyse des métriques de temps de livraison & Membre Projet & Haute \\ \hline
+US23 & Visualisation dynamique du tableau Kanban & Membre Projet & Haute \\ \hline
+\end{longtable}
+
+\section{Architecture générale}
+
+L'architecture du système s'articule autour du patron de conception multicouche (Layered Architecture) couplé à une couche de sécurité transversale :
+
+\begin{figure}[H]
+\centering
+\fbox{
+\begin{minipage}{0.8\textwidth}
+\centering
+\textbf{Client Frontend (React)} \\
+$\downarrow$ \textit{Requête HTTP (JWT Bearer Token)} \\
+\textbf{Filtres de Sécurité (Spring Security / JwtFilter)} \\
+$\downarrow$ \textit{Accès Autorisé} \\
+\textbf{Couche Contrôleurs (REST Controllers / DTOs)} \\
+$\downarrow$ \textit{Validation d'Entrées} \\
+\textbf{Couche Services (Business Logic Services / Transactions)} \\
+$\downarrow$ \textit{Appels aux Dépôts} \\
+\textbf{Couche Accès aux Données (Repositories / JPA)} \\
+$\downarrow$ \textit{Requêtes SQL} \\
+\textbf{Base de Données (PostgreSQL)}
+\end{minipage}
+}
+\caption{Architecture en couches de la plateforme}
+\end{figure}
+
+Les requêtes entrantes sont d'abord interceptées par \verb|JwtFilter|. Si le jeton est valide, le contexte de sécurité Spring Security est peuplé et la requête atteint le contrôleur adéquat. Le contrôleur valide les DTOs d'entrée via des annotations Jakarta Validation puis délègue les traitements métiers à la couche service. La couche service effectue les contrôles d'accès métiers et modifie les entités par le biais des repositories JPA avant de commiter la transaction.
+
+\section{Diagramme de classes}
+
+Le modèle de données de notre système est illustré par les entités JPA suivantes et leurs relations :
+\begin{itemize}
+\item \textbf{Utilisateur} : Représente les comptes utilisateurs enregistrés.
+\item \textbf{ConfirmationToken} : Lie un token unique UUID à un utilisateur pour l'activation. Relation ManyToOne vers \verb|Utilisateur|.
+\item \textbf{Entreprise} : Créée par un utilisateur. Relation ManyToOne vers \verb|Utilisateur| (créateur).
+\item \textbf{MembreEntreprise} : Table de liaison pour les membres d'une entreprise. Contient le rôle d'entreprise (\verb|ADMIN|, \verb|MEMBER|) et le statut de l'invitation. Relations ManyToOne vers \verb|Utilisateur| et \verb|Entreprise|.
+\item \textbf{Projet} : Lié éventuellement à une entreprise. Relations ManyToOne vers \verb|Entreprise| et \verb|Utilisateur| (créateur/manager).
+\item \textbf{MembreProjet} : Table de liaison pour l'équipe projet. Contient le rôle projet (\verb|MANAGER|, \verb|MEMBRE|). Relations ManyToOne vers \verb|Utilisateur| et \verb|Projet|.
+\item \textbf{Sprint} : Appartient à un projet. Contient les dates, le statut du sprint (\verb|PLANNED|, \verb|ACTIVE|, \verb|COMPLETED|) et la vélocité finale. Relations ManyToOne vers \verb|Projet| et \verb|Utilisateur| (créateur).
+\item \textbf{Tache} : Liée à un projet et éventuellement à un sprint. Contient le statut de tâche (\verb|TODO|, \verb|IN_PROGRESS|, \verb|DONE|), les story points, la priorité (\verb|LOW| à \verb|CRITICAL|), les dates clés de transition, le créateur et le membre assigné.
+\item \textbf{DisponibiliteMembre} : Associe un membre de projet à un sprint pour y spécifier son nombre d'heures de disponibilité. Relations ManyToOne vers \verb|Sprint| et \verb|Utilisateur| avec contrainte d'unicité sur le couple.
+\end{itemize}
+
+\section{Diagrammes de séquence}
+
+\subsection{Processus d'inscription et de validation de compte}
+Lors de l'appel à \verb|/api/auth/register|, le système :
+1. Vérifie l'unicité de l'e-mail.
+2. Hache le mot de passe et persiste l'entité \verb|Utilisateur| avec \verb|estActif = false|.
+3. Génère un token UUID, l'associe à l'utilisateur avec une date d'expiration de 24h et le persiste.
+4. Envoie un e-mail asynchrone contenant le lien d'activation (\verb|/api/auth/confirm?token=...|).
+Lors du clic sur le lien, le jeton est marqué comme utilisé et l'utilisateur passe au statut actif (\verb|estActif = true|), lui permettant de s'authentifier par la suite.
+
+\subsection{Transition d'état d'une tâche et métriques}
+Lorsqu'un membre assigné ou le manager met à jour le statut d'une tâche via \verb|/api/taches/{id}/statut| :
+1. Si le statut passe de \verb|TODO| à \verb|IN_PROGRESS|, le système enregistre automatiquement la date courante dans \verb|dateDebutTravail|.
+2. Si le statut passe à \verb|DONE|, le système enregistre la date courante dans \verb|dateCompletion|.
+3. Si la tâche est réouverte (renvoi en \verb|TODO|), ces deux champs temporels sont réinitialisés à nul. Ces dates permettent au module de statistiques de calculer le Lead Time et le Cycle Time lors de l'appel au dashboard.
+
+\section{Conclusion}
+
+Ce chapitre a décrit en détail la modélisation fonctionnelle et conceptuelle du projet. Le chapitre 3 sera dédié aux aspects de réalisation technique, à l'infrastructure logicielle et aux configurations de sécurité.
+
+%=================================================
+% CHAPITRE 3
+%=================================================
+
+\chapter{Réalisation Technique}
+
+\section{Environnement de développement}
+
+Le développement du backend a été réalisé dans les conditions suivantes :
+\begin{itemize}
+\item \textbf{Système d'exploitation} : Windows 11.
+\item \textbf{Environnements de développement intégrés (IDEs)} : IntelliJ IDEA et VS Code.
+\item \textbf{Base de données} : PostgreSQL 16 local, gérée via DBeaver et pgAdmin.
+\item \textbf{Client d'API} : Postman pour le test unitaire des endpoints REST.
+\item \textbf{Gestionnaire de versions} : Git, avec hébergement du dépôt sur GitHub.
+\item \textbf{Serveur de messagerie de test} : Mailtrap, utilisé comme sandbox SMTP pour intercepter les e-mails de confirmation et d'invitation.
+\item \textbf{Moteur de build} : Maven 3.9 pour la gestion des dépendances et du cycle de vie du projet.
+\end{itemize}
+
+\section{Architecture du projet}
+
+L'organisation des répertoires de sources respecte l'arborescence Maven standard pour les applications Spring Boot. Le package racine \verb|com.ensao.gestionprojet| contient les sous-packages suivants :
+\begin{itemize}
+\item \verb|config| : Regroupe les configurations globales de l'application (configuration CORS, configuration de Spring Security).
+\item \verb|controller| : Contient les classes de points d'accès API REST exposant les services aux clients frontaux.
+\item \verb|dto| : Les Data Transfer Objects qui définissent le format des données entrantes et sortantes des requêtes d'API.
+\item \verb|entity| : Contient les classes de modèles persistants annotés avec Jakarta Persistence (JPA).
+\item \verb|enums| : Contient les enums applicatives (\verb|RoleEntreprise|, \verb|RoleProjet|, \verb|StatutInvitation|, \verb|StatutProjet|, \verb|StatutSprint|, \verb|StatutTache|, \verb|PrioriteTache|).
+\item \verb|exception| : Gère les exceptions spécifiques au domaine et fournit des gestionnaires d'erreurs globaux.
+\item \verb|repository| : Regroupe les interfaces étendant \verb|JpaRepository| pour l'accès aux données PostgreSQL.
+\item \verb|security| : Contient le filtre d'autorisation JWT personnalisé (\verb|JwtFilter|), le service utilitaire de génération de token (\verb|JwtService|) et le chargeur d'utilisateurs (\verb|CustomUserDetailsService|).
+\item \verb|service| \& \verb|serviceImp| : Définissent les contrats d'interfaces et leurs implémentations concrètes contenant les règles de gestion.
+\end{itemize}
+
+\section{Sécurité}
+
+\subsection{Authentification}
+
+L'authentification de l'utilisateur repose sur le protocole JWT. Lors d'une tentative de connexion sur le endpoint public \verb|/api/auth/login|, les identifiants fournis (email, mot de passe) sont validés. Si les identifiants correspondent et que le compte est actif, le \verb|JwtService| génère un jeton crypté signé à l'aide d'une clé secrète configurée dans l'environnement. L'expiration du jeton est fixée à 24 heures (86400000 ms).
+
+\subsection{Autorisation}
+
+La sécurité des requêtes est implémentée via une classe \verb|SecurityConfig| qui configure le \verb|SecurityFilterChain| de Spring Security :
+\begin{enumerate}
+\item La protection CSRF (Cross-Site Request Forgery) est désactivée car l'API est stateless.
+\item La politique de session est configurée sur \verb|SessionCreationPolicy.STATELESS|.
+\item Les requêtes ciblant \verb|/api/auth/**| sont explicitement autorisées sans authentification.
+\item Pour toutes les autres requêtes, l'authentification est obligatoire.
+\item Un filtre personnalisé \verb|JwtFilter| est inséré avant le filtre par défaut \verb|UsernamePasswordAuthenticationFilter|. Ce filtre extrait le jeton dans l'en-tête \verb|Authorization| (préfixe \verb|Bearer |), valide sa signature et extrait l'email de l'utilisateur pour l'injecter dans le contexte de sécurité de Spring (\verb|SecurityContextHolder|).
+\end{enumerate}
+
+Le contrôle d'accès fin aux données (par exemple, vérifier qu'un utilisateur est MANAGER d'un projet pour modifier un de ses sprints) est déporté de manière propre dans les implémentations de services, où des requêtes de vérification d'appartenance sont exécutées avant tout traitement métier.
+
+\section{Fonctionnalités réalisées}
+
+\subsection{Gestion des entreprises}
+Le endpoint \verb|POST /api/entreprises| permet à un utilisateur connecté de créer une entreprise en transmettant son nom, sa description et l'URL de son logo. L'utilisateur créateur est enregistré automatiquement dans la table d'association avec le rôle \verb|ADMIN| et le statut d'invitation \verb|ACCEPTED|.
+
+\subsection{Gestion des membres}
+L'administrateur de l'entreprise peut envoyer une invitation à un collaborateur enregistré sur la plateforme par l'appel à \verb|POST /api/entreprises/{id}/invite|. Cela génère un enregistrement de membre d'entreprise au statut \verb|PENDING|. Un courriel contenant le nom de l'entreprise est expédié à l'invité. L'utilisateur ciblé peut accepter ou rejeter cette invitation en invoquant les routes correspondantes (\verb|/api/entreprises/invitations/{invitationId}/accept| ou \verb|/reject|).
+
+\subsection{Gestion des projets}
+La route \verb|POST /api/projets| prend en charge la création de projets. Pour un projet personnel (\verb|PERSONAL|), le statut est directement \verb|ACTIVE| et aucun rattachement d'entreprise n'est requis. Pour un projet d'entreprise (\verb|ENTREPRISE|), le créateur doit être membre accepté de l'entreprise, et le projet est créé au statut \verb|PENDING|. L'administrateur de l'entreprise valide ou rejette ce projet d'entreprise via les routes \verb|PUT /api/projets/{id}/valider| et \verb|PUT /api/projets/{id}/rejeter|. À la création, le créateur devient automatiquement \verb|MANAGER| du projet.
+
+\subsection{Gestion des sprints}
+Les sprints sont créés par le manager du projet (\verb|POST /api/sprints|), sous réserve que le projet associé soit actif et que la date de fin du sprint soit postérieure à sa date de début. Un sprint est initialement à l'état \verb|PLANNED|.
+Le manager peut également définir la capacité disponible en heures pour chaque membre participant au sprint (\verb|POST /api/sprints/{id}/disponibilites|).
+
+\subsection{Gestion des tâches}
+Les tâches du projet sont créées par le manager (\verb|POST /api/taches|). Elles comportent un titre, une description, des story points (doivent être positifs ou nuls) et un niveau de priorité. Elles peuvent être rattachées à un sprint ou laissées dans le backlog (valeur de sprint nulle). La route \verb|PUT /api/taches/{id}/assigner/{userId}| permet d'assigner la tâche à un membre accepté du projet.
+
+\subsection{Gestion du backlog}
+Le système expose \verb|GET /api/taches/backlog/{projetId}| qui liste de façon isolée l'ensemble des tâches du projet qui ne sont pas encore planifiées au sein d'un sprint (c'est-à-dire dont l'identifiant de sprint est nul). Le manager peut associer des tâches du backlog à un sprint existant en appelant \verb|POST /api/sprints/{id}/taches|, à condition que la tâche soit au statut initial \verb|TODO|.
+
+\section{Difficultés rencontrées}
+
+Durant la phase de réalisation technique, plusieurs difficultés majeures ont été surmontées :
+\begin{itemize}
+\item \textbf{Gestion des relations JPA et chargement paresseux} : L'utilisation de FetchType.LAZY a provoqué initialement des erreurs de sérialisation lors de la conversion des entités en JSON au niveau des contrôleurs. Nous avons résolu cela en implémentant des classes DTO (Data Transfer Objects) spécifiques pour chaque retour d'API, isolant ainsi complètement nos entités JPA.
+\item \textbf{Sécurisation granulaire sans annotations de rôles globaux} : Comme un utilisateur peut être MANAGER dans un projet mais simple MEMBRE dans un autre, les rôles ne pouvaient pas être portés par le token JWT global sous forme d'autorisations Spring Security globales (\verb|@PreAuthorize|). Nous avons dû implémenter des requêtes d'autorisation dynamiques requêtant les tables de liaison \verb|MembreProjet| au niveau de la couche service avant chaque modification de ressource.
+\item \textbf{Précision des calculs temporels pour les indicateurs Agile} : Le calcul des métriques de temps de traversée impliquait la manipulation de formats de date SQL. Nous avons choisi d'utiliser la classe \verb|java.time.Duration| pour calculer les différences temporelles en secondes, converties ensuite en valeurs flottantes à deux décimales exprimées en heures.
+\end{itemize}
+
+\section{Conclusion}
+
+Les choix d'architecture et de sécurité détaillés dans ce chapitre garantissent la robustesse et l'extensibilité du backend. Le chapitre 4 présentera de manière ciblée les mécanismes de pilotage Agile et les indicateurs implémentés.
+
+%=================================================
+% CHAPITRE 4
+%=================================================
+
+\chapter{Pilotage Agile et Suivi d'Avancement}
+
+\section{Introduction}
+
+L'un des objectifs clés de notre plateforme de gestion de projet est de fournir des métriques quantitatives et visuelles permettant aux équipes de mesurer leur efficacité et de planifier leurs futurs sprints de manière rationnelle. Ces indicateurs sont calculés dynamiquement par le serveur à partir des informations opérationnelles saisies par les collaborateurs.
+
+\section{Organisation Scrum}
+
+\subsection{Product Backlog}
+
+Le Product Backlog centralise toutes les exigences du projet sous forme de tâches non planifiées. Ces tâches peuvent être enrichies, estimées en story points et priorisées à tout moment par le responsable de projet.
+
+\subsection{Sprint Backlog}
+
+Le Sprint Backlog représente le sous-ensemble de tâches du backlog sélectionnées pour être réalisées durant le sprint. L'intégrité de notre système interdit d'ajouter à un sprint des tâches dont le statut a déjà progressé au-delà de \verb|TODO|.
+
+\subsection{Planification des sprints}
+
+La planification repose sur une comparaison saine entre la charge totale de story points planifiés et la capacité globale de l'équipe pour le sprint, obtenue en agrégeant les heures de disponibilité définies pour chaque membre.
+
+\section{Burndown Chart}
+
+Le Burndown Chart est un indicateur visuel qui trace la quantité de travail restante (exprimée en story points ou en nombre de tâches) en fonction du temps écoulé dans le sprint. Bien que le rendu graphique soit assuré par le client React, le backend prépare les données structurées des tâches affectées à un sprint.
+
+\section{Velocity}
+
+La vélocité d'une équipe mesure sa capacité à terminer des éléments du backlog lors d'un sprint.
+
+\subsection{Calcul de la vélocité}
+
+Lors de la clôture d'un sprint, sa vélocité finale est enregistrée dans le champ \verb|velocite| de l'entité \verb|Sprint|. Cette valeur est calculée par le service selon la formule :
+$$Velocity = \sum StoryPoints(T_i) \quad \text{où } T_i \in \{T\hat{a}ches\} \text{ affectées au sprint et ayant } statut = DONE$$
+
+Les tâches inachevées (statuts \verb|TODO| ou \verb|IN_PROGRESS|) à la fin du sprint ne contribuent pas à la vélocité et doivent être reportées dans le backlog du projet ou replanifiées dans le sprint suivant.
+
+\subsection{Historique de vélocité}
+
+L'historique des vélocités des sprints successifs permet au manager de projet de déterminer une moyenne stable, facilitant les estimations futures lors des réunions de planification de sprint.
+
+\section{Lead Time}
+
+Le Lead Time représente la durée totale du cycle de vie d'une demande, depuis son expression formelle (création dans le backlog) jusqu'à sa livraison complète (passage à l'état DONE).
+Il s'exprime par la formule :
+$$Lead Time = DateCompletion - DateCreation$$
+
+Cette métrique reflète la réactivité globale de l'équipe et la fluidité de son processus d'alimentation en fonctionnalités.
+
+\section{Cycle Time}
+
+Le Cycle Time mesure le temps effectivement consacré au traitement d'une tâche, c'est-à-dire la période s'écoulant entre le début effectif du développement (changement de statut vers IN\_PROGRESS) et la finalisation de la tâche (changement vers DONE).
+Sa formule est la suivante :
+$$Cycle Time = DateCompletion - DateDebutTravail$$
+
+Un écart important entre le Lead Time et le Cycle Time pour une tâche donnée met en lumière une phase d'attente prolongée de la tâche dans le backlog ou dans un sprint planifié avant sa prise en charge réelle.
+
+\section{Dashboard de Suivi}
+
+Le dashboard centralise l'accès à ces indicateurs par le biais de contrôleurs dédiés. Le service \verb|DashboardService| calcule à la demande les statistiques du projet :
+\begin{itemize}
+\item \textbf{Répartition de la charge (Workload)} : Pour chaque membre accepté de l'équipe projet, le système retourne le nombre total de tâches qui lui sont affectées, ainsi que leur découpage précis par statut (\verb|TODO|, \verb|IN_PROGRESS|, \verb|DONE|). Cela permet d'identifier les goulets d'étranglement ou les situations de surcharge individuelle.
+\item \textbf{Métriques de flux moyennes} : Le système extrait toutes les tâches terminées (\verb|DONE|) du projet, calcule individuellement leur Lead Time et leur Cycle Time en heures, puis calcule les moyennes globales associées au projet.
+\end{itemize}
+
+\section{Analyse des résultats}
+
+L'intégration de ces métriques directement dans l'outil de gestion évite le recours à des fichiers de calcul externes et garantit que les données historiques sont préservées de manière cohérente au sein de la base de données PostgreSQL. Le manager peut instantanément analyser si le Cycle Time moyen diminue au fil des sprints, ce qui traduirait une meilleure efficacité technique de son équipe de développement.
+
+\section{Conclusion}
+
+Ce chapitre a mis en évidence la valeur ajoutée de notre plateforme en matière de suivi de projet Scrum. Le chapitre conclusif résumera les apports du projet et dégagera des perspectives d'évolution.
+
+%=================================================
+% CONCLUSION
+%=================================================
+
+\chapter*{Conclusion Générale}
+\addcontentsline{toc}{chapter}{Conclusion Générale}
+
+La réalisation de ce projet de fin d'année nous a permis de concevoir et de développer une plateforme complète de gestion de projet Agile conforme aux spécifications de la méthodologie Scrum.
+
+Sur le plan technique, nous avons mis en œuvre une architecture robuste basée sur Spring Boot 4.0.6 et PostgreSQL, sécurisée à l'aide de Spring Security et de tokens JWT. Les contraintes métiers de Scrum ont été rigoureusement appliquées dans la couche service (gestion des rôles de manager, contraintes d'unicité de sprints actifs, validations d'état des tâches). De plus, l'intégration d'indicateurs de flux avancés comme le Lead Time et le Cycle Time démontre la faisabilité de l'automatisation du suivi de la performance des équipes agiles.
+
+Ce projet a constitué une excellente opportunité de consolidation de nos compétences en ingénierie logicielle, en modélisation de base de données relationnelle et en développement d'API REST sécurisées.
+
+%=================================================
+% PERSPECTIVES
+%=================================================
+
+\chapter*{Perspectives}
+\addcontentsline{toc}{chapter}{Perspectives}
+
+Parmi les axes d'amélioration identifiés pour les versions futures de la plateforme, nous pouvons citer :
+\begin{itemize}
+\item \textbf{Notifications en temps réel} : Intégration de protocoles WebSockets pour notifier instantanément les utilisateurs des assignations de tâches ou des modifications de statut de sprint.
+\item \textbf{Graphique Burndown dynamique} : Intégration d'un module de génération de coordonnées de Burndown au niveau du backend pour tracer la courbe idéale par rapport à la courbe réelle jour par jour.
+\item \textbf{Export de rapports PDF} : Conception d'un service d'exportation permettant de générer des bilans de sprint au format PDF contenant les indicateurs clés et l'historique de vélocité.
+\item \textbf{Assistant IA} : Utilisation d'algorithmes prédictifs simples pour suggérer des story points ou alerter sur la faisabilité d'un sprint backlog en comparant la vélocité historique à la capacité déclarée.
+\end{itemize}
+
+%=================================================
+% BIBLIOGRAPHIE
+%=================================================
+
+\begin{thebibliography}{99}
+
+\bibitem{spring}
+Spring Framework Reference Documentation, \textit{Spring Security and Web MVC Modules}, 2026. \url{https://spring.io/projects}
+
+\bibitem{hibernate}
+Hibernate ORM User Guide, \textit{JPA Reference and Relational Mapping}, 2025. \url{https://hibernate.org}
+
+\bibitem{scrum}
+Ken Schwaber and Jeff Sutherland, \textit{The Scrum Guide: The Definitive Guide to Scrum: The Rules of the Game}, 2020. \url{https://scrumguides.org}
+
+\bibitem{jwt}
+Internet Engineering Task Force (IETF), \textit{RFC 7519: JSON Web Token (JWT)}, 2015. \url{https://tools.ietf.org/html/rfc7519}
+
+\bibitem{postgres}
+PostgreSQL Global Development Group, \textit{PostgreSQL 16 Documentation}, 2023. \url{https://www.postgresql.org/docs/}
+
+\end{thebibliography}
+
+%=================================================
+% ANNEXES
+%=================================================
+
+\appendix
+
+\chapter{User Stories}
+
+Cette annexe détaille les critères d'acceptation de quelques récits utilisateurs stratégiques implémentés au niveau du backend :
+
+\section*{US02 : Activation du compte utilisateur}
+\begin{itemize}
+\item \textbf{Critère 1} : L'utilisateur reçoit par e-mail un lien contenant un jeton d'activation unique de type UUID.
+\item \textbf{Critère 2} : Le jeton doit expirer après 24 heures de validité.
+\item \textbf{Critère 3} : Une fois le jeton validé, l'attribut \verb|estActif| de l'utilisateur passe à vrai et le jeton est marqué comme utilisé pour empêcher toute réutilisation.
+\end{itemize}
+
+\section*{US08 : Validation de projet d'entreprise}
+\begin{itemize}
+\item \textbf{Critère 1} : Seul un utilisateur ayant le rôle \verb|ADMIN| au sein de l'entreprise associée peut valider ou rejeter un projet en attente (\verb|PENDING|).
+\item \textbf{Critère 2} : La validation change le statut du projet à \verb|ACTIVE|, le rendant éligible à la planification de sprints.
+\item \textbf{Critère 3} : Le rejet passe le statut à \verb|REJECTED|.
+\end{itemize}
+
+\section*{US12 : Mise à jour du statut d'une tâche}
+\begin{itemize}
+\item \textbf{Critère 1} : Seul le manager du projet ou l'utilisateur explicitement assigné à la tâche est autorisé à modifier son statut.
+\item \textbf{Critère 2} : Le passage à l'état \verb|IN_PROGRESS| horodate automatiquement la valeur de \verb|dateDebutTravail|.
+\item \textbf{Critère 3} : Le passage à l'état \verb|DONE| horodate automatiquement la valeur de \verb|dateCompletion|.
+\end{itemize}
+
+\section*{US15 : Heures de disponibilité d'un sprint}
+\begin{itemize}
+\item \textbf{Critère 1} : Le manager du projet définit les heures de disponibilité par membre.
+\item \textbf{Critère 2} : L'utilisateur ciblé doit être un membre actif et accepté au sein de l'équipe du projet.
+\item \textbf{Critère 3} : Un utilisateur ne peut avoir qu'une seule valeur d'heures de disponibilité associée par sprint (garanti par une contrainte d'unicité SQL).
+\end{itemize}
+
+\chapter{Diagrammes UML et Schéma de base de données}
+
+Le schéma relationnel SQL généré par notre couche de persistance JPA dans la base de données PostgreSQL comprend les tables suivantes :
+
+\section*{Table : \texttt{utilisateur}}
+\begin{itemize}
+\item \verb|id| : SERIAL PRIMARY KEY
+\item \verb|nom| : VARCHAR(255) NOT NULL
+\item \verb|prenom| : VARCHAR(255) NOT NULL
+\item \verb|email| : VARCHAR(255) UNIQUE NOT NULL
+\item \verb|mot_de_passe| : VARCHAR(255) NOT NULL
+\item \verb|est_actif| : BOOLEAN DEFAULT FALSE
+\end{itemize}
+
+\section*{Table : \texttt{confirmation\_token}}
+\begin{itemize}
+\item \verb|id| : SERIAL PRIMARY KEY
+\item \verb|token| : VARCHAR(255) UNIQUE NOT NULL
+\item \verb|expiration_date| : TIMESTAMP NOT NULL
+\item \verb|utilise| : BOOLEAN DEFAULT FALSE
+\item \verb|utilisateur_id| : INTEGER REFERENCES utilisateur(id)
+\end{itemize}
+
+\section*{Table : \texttt{entreprise}}
+\begin{itemize}
+\item \verb|id| : SERIAL PRIMARY KEY
+\item \verb|nom| : VARCHAR(255) NOT NULL
+\item \verb|description| : TEXT
+\item \verb|url_logo| : VARCHAR(255)
+\item \verb|createur_id| : INTEGER REFERENCES utilisateur(id)
+\item \verb|date_creation| : TIMESTAMP NOT NULL
+\end{itemize}
+
+\section*{Table : \texttt{membre\_entreprise}}
+\begin{itemize}
+\item \verb|id| : SERIAL PRIMARY KEY
+\item \verb|entreprise_id| : INTEGER REFERENCES entreprise(id)
+\item \verb|utilisateur_id| : INTEGER REFERENCES utilisateur(id)
+\item \verb|role| : VARCHAR(50) NOT NULL (ADMIN, MEMBER)
+\item \verb|statut| : VARCHAR(50) NOT NULL (PENDING, ACCEPTED, REJECTED)
+\item \verb|invite_par_id| : INTEGER REFERENCES utilisateur(id)
+\item \verb|date_invitation| : TIMESTAMP
+\item \verb|date_reponse| : TIMESTAMP
+\end{itemize}
+
+\section*{Table : \texttt{projet}}
+\begin{itemize}
+\item \verb|id| : SERIAL PRIMARY KEY
+\item \verb|nom| : VARCHAR(255) NOT NULL
+\item \verb|description| : TEXT
+\item \verb|type| : VARCHAR(50) NOT NULL (PERSONAL, ENTREPRISE)
+\item \verb|statut| : VARCHAR(50) NOT NULL (PENDING, ACTIVE, REJECTED)
+\item \verb|entreprise_id| : INTEGER REFERENCES entreprise(id) NULL
+\item \verb|createur_id| : INTEGER REFERENCES utilisateur(id)
+\item \verb|date_debut| : DATE
+\item \verb|date_fin| : DATE
+\item \verb|date_creation| : TIMESTAMP
+\end{itemize}
+
+\section*{Table : \texttt{membre\_projet}}
+\begin{itemize}
+\item \verb|id| : SERIAL PRIMARY KEY
+\item \verb|projet_id| : INTEGER REFERENCES projet(id)
+\item \verb|utilisateur_id| : INTEGER REFERENCES utilisateur(id)
+\item \verb|role| : VARCHAR(50) (MANAGER, MEMBRE)
+\item \verb|statut| : VARCHAR(50) (PENDING, ACCEPTED, REJECTED)
+\item \verb|invite_par_id| : INTEGER REFERENCES utilisateur(id)
+\item \verb|date_adhesion| : TIMESTAMP
+\end{itemize}
+
+\section*{Table : \texttt{sprint}}
+\begin{itemize}
+\item \verb|id| : SERIAL PRIMARY KEY
+\item \verb|projet_id| : INTEGER REFERENCES projet(id)
+\item \verb|nom| : VARCHAR(255) NOT NULL
+\item \verb|objectif| : TEXT
+\item \verb|date_debut| : DATE NOT NULL
+\item \verb|date_fin| : DATE NOT NULL
+\item \verb|statut| : VARCHAR(50) (PLANNED, ACTIVE, COMPLETED)
+\item \verb|velocite| : INTEGER
+\item \verb|createur_id| : INTEGER REFERENCES utilisateur(id)
+\item \verb|date_creation| : TIMESTAMP
+\end{itemize}
+
+\section*{Table : \texttt{task}}
+\begin{itemize}
+\item \verb|id| : SERIAL PRIMARY KEY
+\item \verb|titre| : VARCHAR(300) NOT NULL
+\item \verb|description| : TEXT
+\item \verb|projet_id| : INTEGER REFERENCES projet(id)
+\item \verb|sprint_id| : INTEGER REFERENCES sprint(id) NULL
+\item \verb|utilisateur_assigne_id| : INTEGER REFERENCES utilisateur(id) NULL
+\item \verb|statut| : VARCHAR(50) (TODO, IN\_PROGRESS, DONE)
+\item \verb|priorite| : VARCHAR(50) (LOW, MEDIUM, HIGH, CRITICAL)
+\item \verb|story_points| : INTEGER CHECK(story\_points >= 0)
+\item \verb|createur_id| : INTEGER REFERENCES utilisateur(id)
+\item \verb|date_debut_travail| : TIMESTAMP
+\item \verb|date_completion| : TIMESTAMP
+\item \verb|date_creation| : TIMESTAMP
+\item \verb|date_mise_a_jour| : TIMESTAMP
+\end{itemize}
+
+\section*{Table : \texttt{disponibilite\_membre}}
+\begin{itemize}
+\item \verb|id| : SERIAL PRIMARY KEY
+\item \verb|sprint_id| : INTEGER REFERENCES sprint(id)
+\item \verb|utilisateur_id| : INTEGER REFERENCES utilisateur(id)
+\item \verb|heures_disponibles| : INTEGER NOT NULL
+\item \textit{Contrainte d'unicité} : \verb|UNIQUE(sprint_id, utilisateur_id)|
+\end{itemize}
+
+\chapter{Documentation API REST}
+
+Les communications entre le client frontend React et le backend Spring Boot s'effectuent par le biais de requêtes HTTP REST. Le tableau suivant présente les principaux endpoints exposés :
+
+\begin{longtable}{|p{1.5cm}|p{5.5cm}|p{2cm}|p{5cm}|}
+\hline
+\textbf{Méthode} & \textbf{Point d'accès (URL)} & \textbf{Accès} & \textbf{Rôle / Action} \\ \hline
+POST & \verb|/api/auth/register| & Public & Inscription d'un nouvel utilisateur \\ \hline
+GET & \verb|/api/auth/confirm| & Public & Validation du token d'activation \\ \hline
+POST & \verb|/api/auth/login| & Public & Connexion, retour du token JWT \\ \hline
+POST & \verb|/api/entreprises| & Connecté & Création d'une entreprise \\ \hline
+POST & \verb|/api/entreprises/{id}/invite| & ADMIN & Inviter un membre dans l'entreprise \\ \hline
+POST & \verb|/api/entreprises/invitations/{id}/accept| & Connecté & Accepter une invitation d'entreprise \\ \hline
+POST & \verb|/api/entreprises/invitations/{id}/reject| & Connecté & Refuser une invitation d'entreprise \\ \hline
+POST & \verb|/api/projets| & Connecté & Créer un projet (personnel/entreprise) \\ \hline
+PUT & \verb|/api/projets/{id}/valider| & ADMIN & Approuver un projet d'entreprise \\ \hline
+PUT & \verb|/api/projets/{id}/rejeter| & ADMIN & Rejeter un projet d'entreprise \\ \hline
+GET & \verb|/api/projets/mes-projets| & Connecté & Récupérer la liste de mes projets \\ \hline
+POST & \verb|/api/projets/{id}/invite| & MANAGER & Inviter un membre au sein du projet \\ \hline
+POST & \verb|/api/sprints| & MANAGER & Créer un sprint \\ \hline
+POST & \verb|/api/sprints/{id}/taches| & MANAGER & Planifier des tâches dans un sprint \\ \hline
+POST & \verb|/api/sprints/{id}/disponibilites| & MANAGER & Définir la capacité disponible en heures \\ \hline
+GET & \verb|/api/sprints/projet/{projetId}| & Connecté & Liste des Sprints d'un projet \\ \hline
+POST & \verb|/api/taches| & MANAGER & Créer une tâche dans le backlog \\ \hline
+PUT & \verb|/api/taches/{id}/assigner/{userId}| & MANAGER & Assigner la tâche à un membre \\ \hline
+PUT & \verb|/api/taches/{id}/statut| & MANAGER/Ass. & Mettre à jour l'état de la tâche \\ \hline
+GET & \verb|/api/taches/backlog/{projetId}| & Connecté & Consulter le Backlog produit \\ \hline
+GET & \verb|/api/taches/kanban/{projetId}| & Connecté & Récupérer les tâches formatées Kanban \\ \hline
+GET & \verb|/api/dashboard/{projetId}/workload| & Connecté & Consulter le workload par membre \\ \hline
+GET & \verb|/api/dashboard/{projetId}/metriques| & Connecté & Consulter les moyennes Lead/Cycle Time \\ \hline
+\end{longtable}
+
+\end{document}

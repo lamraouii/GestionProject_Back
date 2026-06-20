@@ -29,9 +29,7 @@ public class DashboardServiceImpl implements DashboardService {
     private final AuthHelper authHelper;
 
 
-    // ============================================================
-    //  US21 — Obtenir le workload des membres du projet
-    // ============================================================
+    // Obtenir le workload des membres du projet
     @Override
     public List<WorkloadDto> getWorkload(Long projetId) {
 
@@ -80,9 +78,7 @@ public class DashboardServiceImpl implements DashboardService {
         return response;
     }
 
-    // ============================================================
-    //  US22 — Obtenir les métriques (Lead/Cycle Time)
-    // ============================================================
+    /**  Obtenir les métriques (Lead/Cycle Time) */
     @Override
     public MetriquesDto getMetriques(Long projetId) {
 

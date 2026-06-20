@@ -20,9 +20,7 @@ public class TacheController {
 
     private final TacheService tacheService;
 
-    /**
-     * US10 — Créer une tâche (MANAGER)
-     */
+    // Creer une tâche (MANAGER)
     @PostMapping
     public ResponseEntity<TacheResponseDto> creerTache(
             @Valid @RequestBody CreateTacheRequestDto request
@@ -33,9 +31,7 @@ public class TacheController {
                 .body(response);
     }
 
-    /**
-     * US11 — Assigner une tâche à un membre (MANAGER)
-     */
+    // Assigner une tâche à un membre (MANAGER)
     @PutMapping("/{id}/assigner/{userId}")
     public ResponseEntity<TacheResponseDto> assignerTache(
             @PathVariable Long id,
@@ -45,9 +41,7 @@ public class TacheController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * US12 — Mettre à jour le statut d'une tâche (MANAGER ou membre assigné)
-     */
+  // Mettre à jour le statut d'une tâche (MANAGER ou membre assigné)
     @PutMapping("/{id}/statut")
     public ResponseEntity<TacheResponseDto> mettreAJourStatut(
             @PathVariable Long id,
@@ -57,9 +51,7 @@ public class TacheController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Récupérer toutes les tâches d'un projet
-     */
+    // Récupérer toutes les tâches d'un projet
     @GetMapping("/projet/{projetId}")
     public ResponseEntity<List<TacheResponseDto>> getTachesProjet(
             @PathVariable Long projetId
@@ -68,9 +60,7 @@ public class TacheController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Récupérer les tâches du backlog (sprint_id = NULL)
-     */
+    // Récupérer les tâches du backlog (sprint_id = NULL)
     @GetMapping("/backlog/{projetId}")
     public ResponseEntity<List<TacheResponseDto>> getTachesBacklog(
             @PathVariable Long projetId
@@ -79,9 +69,7 @@ public class TacheController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * US23 — Obtenir la vue Kanban Board (Todo, In Progress, Done)
-     */
+    // Obtenir la vue Kanban Board (Todo, In Progress, Done)
     @GetMapping("/kanban/{projetId}")
     public ResponseEntity<KanbanBoardDto> getKanbanBoard(
             @PathVariable Long projetId

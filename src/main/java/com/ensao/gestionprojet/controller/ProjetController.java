@@ -19,10 +19,7 @@ import java.util.List;
 public class ProjetController {
 
     private final ProjetService projetService;
-
-    /**
-     * US06 & US07 — Créer un projet personnel ou d'entreprise
-     */
+    // Creer un projet personnel ou d'entreprise
     @PostMapping
     public ResponseEntity<ProjetResponseDto> creerProjet(
             @Valid @RequestBody CreateProjetRequestDto request
@@ -33,9 +30,7 @@ public class ProjetController {
                 .body(response);
     }
 
-    /**
-     * US08 — Valider un projet d'entreprise (ADMIN)
-     */
+    // Valider un projet d'entreprise (ADMIN)
     @PutMapping("/{id}/valider")
     public ResponseEntity<ProjetResponseDto> validerProjet(
             @PathVariable Long id
@@ -44,9 +39,7 @@ public class ProjetController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * US08 — Rejeter un projet d'entreprise (ADMIN)
-     */
+   // Rejeter un projet d'entreprise (ADMIN)
     @PutMapping("/{id}/rejeter")
     public ResponseEntity<ProjetResponseDto> rejeterProjet(
             @PathVariable Long id
@@ -55,9 +48,7 @@ public class ProjetController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Récupérer les détails d'un projet par ID
-     */
+    // Récuperer les détails d'un projet par ID
     @GetMapping("/{id}")
     public ResponseEntity<ProjetResponseDto> getProjet(
             @PathVariable Long id
@@ -66,9 +57,7 @@ public class ProjetController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * US09 — Inviter un membre au projet (MANAGER)
-     */
+    // Inviter un membre au projet (MANAGER)
     @PostMapping("/{id}/invite")
     public ResponseEntity<Void> inviterMembreProjet(
             @PathVariable Long id,

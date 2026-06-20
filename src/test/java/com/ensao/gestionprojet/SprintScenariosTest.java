@@ -139,9 +139,7 @@ public class SprintScenariosTest {
         return utilisateurRepository.save(user);
     }
 
-    // =========================================================================
-    // US13 — Créer un sprint (MANAGER)
-    // =========================================================================
+
     @Test
     public void testCreateSprint() throws Exception {
         Map<String, Object> body = new HashMap<>();
@@ -178,9 +176,7 @@ public class SprintScenariosTest {
         });
     }
 
-    // =========================================================================
-    // US14 — Ajouter des tâches au sprint (MANAGER)
-    // =========================================================================
+
     @Test
     public void testAddTasksToSprint() throws Exception {
         // Setup sprint
@@ -250,9 +246,7 @@ public class SprintScenariosTest {
         });
     }
 
-    // =========================================================================
-    // US15 — Définir la disponibilité des membres (MANAGER)
-    // =========================================================================
+
     @Test
     public void testDefineMemberAvailability() throws Exception {
         // Setup sprint

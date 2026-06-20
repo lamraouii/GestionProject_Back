@@ -42,9 +42,7 @@ public class SprintServiceImpl implements SprintService {
     }
 
 
-    // ============================================================
-    //  US13 — Créer un sprint (MANAGER)
-    // ============================================================
+    // Créer un sprint (MANAGER)
     @Override
     @Transactional
     public SprintResponseDto creerSprint(CreateSprintRequestDto request) {
@@ -82,9 +80,7 @@ public class SprintServiceImpl implements SprintService {
         return sprintMapper.toDto(savedSprint);
     }
 
-    // ============================================================
-    //  US14 — Ajouter des tâches au sprint (MANAGER)
-    // ============================================================
+    // Ajouter des tâches au sprint (MANAGER)
     @Override
     @Transactional
     public SprintResponseDto ajouterTaches(Long sprintId, AddTachesSprintRequestDto request) {
@@ -126,9 +122,7 @@ public class SprintServiceImpl implements SprintService {
     }
 
 
-    // ============================================================
-    //  US15 — Définir la disponibilité des membres (MANAGER)
-    // ============================================================
+    // Définir la disponibilité des membres (MANAGER)
     @Override
     @Transactional
     public void definirDisponibilite(Long sprintId, List<DisponibiliteMembreRequestDto> request) {
@@ -170,9 +164,7 @@ public class SprintServiceImpl implements SprintService {
         }
     }
 
-    // ============================================================
-    //  Récupérer tous les sprints d'un projet
-    // ============================================================
+    // Récupérer tous les sprints d'un projet
     @Override
     @Transactional(readOnly = true)
     public SprintResponseDto getSprintById(Long sprintId) {
@@ -436,9 +428,7 @@ public class SprintServiceImpl implements SprintService {
     }
 
 
-    // ============================================================
-    //  Helpers privés
-    // ============================================================
+
     private void enregistrerSnapshot(Sprint sprint) {
 
         int remainingPoints = sprint.getTaches()

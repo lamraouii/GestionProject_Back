@@ -21,9 +21,7 @@ public class DashboardController {
 
     private final DashboardService dashboardService;
 
-    /**
-     * US21 — Obtenir le workload (nombre de tâches par statut) par membre du projet
-     */
+    // Obtenir le workload (nombre de taches par statut) par membre du projet
     @GetMapping("/{projetId}/workload")
     public ResponseEntity<List<WorkloadDto>> getWorkload(
             @PathVariable Long projetId
@@ -32,9 +30,7 @@ public class DashboardController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * US22 — Obtenir les métriques Lead Time & Cycle Time moyens pour les tâches complétées du projet
-     */
+    // Obtenir les métriques Lead Time & Cycle Time moyens pour les tâches complétées du projet
     @GetMapping("/{projetId}/metriques")
     public ResponseEntity<MetriquesDto> getMetriques(
             @PathVariable Long projetId

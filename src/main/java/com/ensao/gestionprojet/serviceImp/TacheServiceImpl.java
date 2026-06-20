@@ -28,9 +28,7 @@ public class TacheServiceImpl implements TacheService {
     private final UtilisateurRepo utilisateurRepository;
     private final AuthHelper authHelper;
 
-    // ============================================================
-    //  US10 — Créer une tâche (MANAGER)
-    // ============================================================
+    // Créer une tâche (MANAGER)
     @Override
     @Transactional
     public TacheResponseDto creerTache(CreateTacheRequestDto request) {
@@ -98,9 +96,7 @@ public class TacheServiceImpl implements TacheService {
         return toDto(savedTache);
     }
 
-    // ============================================================
-    //  US11 — Assigner une tâche à un membre (MANAGER)
-    // ============================================================
+    //  Assigner une tâche à un membre (MANAGER)
     @Override
     @Transactional
     public TacheResponseDto assignerTache(Long tacheId, Long utilisateurId) {
@@ -129,10 +125,7 @@ public class TacheServiceImpl implements TacheService {
         return toDto(savedTache);
     }
 
-    // ============================================================
-    //  US12 — Mettre à jour le statut d'une tâche
-    //         (MANAGER ou membre assigné)
-    // ============================================================
+    // Mettre à jour le statut d'une tâche (MANAGER ou membre assigné)
     @Override
     @Transactional
     public TacheResponseDto mettreAJourStatut(Long tacheId, UpdateStatutTacheRequestDto request) {
@@ -182,9 +175,7 @@ public class TacheServiceImpl implements TacheService {
         return toDto(savedTache);
     }
 
-    // ============================================================
-    //  Récupérer toutes les tâches d'un projet
-    // ============================================================
+    // Récupérer toutes les tâches d'un projet
     @Override
     public List<TacheResponseDto> getTachesProjet(Long projetId) {
 
@@ -202,9 +193,7 @@ public class TacheServiceImpl implements TacheService {
                 .collect(Collectors.toList());
     }
 
-    // ============================================================
-    //  Récupérer les tâches du backlog (sprint_id = NULL)
-    // ============================================================
+    // Récupérer les tâches du backlog (sprint_id = NULL)
     @Override
     public List<TacheResponseDto> getTachesBacklog(Long projetId) {
 
@@ -221,9 +210,7 @@ public class TacheServiceImpl implements TacheService {
                 .collect(Collectors.toList());
     }
 
-    // ============================================================
-    //  US23 — Obtenir la vue Kanban Board
-    // ============================================================
+    // Obtenir la vue Kanban Board
     @Override
     public KanbanBoardDto getKanbanBoard(Long projetId) {
 
@@ -259,9 +246,7 @@ public class TacheServiceImpl implements TacheService {
                 .build();
     }
 
-    // ============================================================
-    //  Helpers privés
-    // ============================================================
+    // Helpers privés
 
     private void verifierManager(Long utilisateurId, Long projetId) {
         membreProjetRepository

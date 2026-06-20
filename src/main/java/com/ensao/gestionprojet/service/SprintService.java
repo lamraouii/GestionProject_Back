@@ -6,13 +6,13 @@ import java.util.List;
 
 public interface SprintService {
 
-    /** US13 — Créer un sprint (MANAGER) */
+    /**  — Créer un sprint (MANAGER) */
     SprintResponseDto creerSprint(CreateSprintRequestDto request);
 
-    /** US14 — Ajouter des tâches au sprint (MANAGER) */
+    /**  — Ajouter des tâches au sprint (MANAGER) */
     SprintResponseDto ajouterTaches(Long sprintId, AddTachesSprintRequestDto request);
 
-    /** US15 — Définir la disponibilité des membres (MANAGER) */
+    /**  — Définir la disponibilité des membres (MANAGER) */
     void definirDisponibilite(Long sprintId, List<DisponibiliteMembreRequestDto> request);
 
     SprintResponseDto getSprintById(Long sprintId);

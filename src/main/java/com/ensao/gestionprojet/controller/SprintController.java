@@ -17,9 +17,7 @@ public class SprintController {
 
     private final SprintService sprintService;
 
-    /**
-     * US13 — Créer un sprint (MANAGER)
-     */
+    // Créer un sprint (MANAGER)
     @PostMapping
     public ResponseEntity<SprintResponseDto> creerSprint(
             @Valid @RequestBody CreateSprintRequestDto request
@@ -30,9 +28,7 @@ public class SprintController {
                 .body(response);
     }
 
-    /**
-     * US14 — Ajouter des tâches au sprint (MANAGER)
-     */
+    // Ajouter des tâches au sprint (MANAGER)
     @PostMapping("/{id}/taches")
     public ResponseEntity<SprintResponseDto> ajouterTaches(
             @PathVariable Long id,
@@ -42,9 +38,7 @@ public class SprintController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * US15 — Définir la disponibilité des membres (MANAGER)
-     */
+   // Définir la disponibilité des membres (MANAGER)
     @PostMapping("/{id}/disponibilites")
     public ResponseEntity<Void> definirDisponibilite(
             @PathVariable Long id,
@@ -54,9 +48,7 @@ public class SprintController {
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * Récupérer tous les sprints d'un projet
-     */
+    // Récupérer tous les sprints d'un projet
     @GetMapping("/{sprintId}")
     public ResponseEntity<SprintResponseDto> getSprintById(
             @PathVariable Long sprintId

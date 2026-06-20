@@ -30,9 +30,7 @@ public class ProjetServiceImpl implements ProjetService {
     private final AuthHelper authHelper;
     private final EmailService emailService;
 
-    // ============================================================
-    //  US06 & US07 — Créer un projet personnel ou d'entreprise
-    // ============================================================
+    // Créer un projet personnel ou d'entreprise
     @Override
     @Transactional
     public ProjetResponseDto creerProjet(CreateProjetRequestDto request) {
@@ -52,12 +50,12 @@ public class ProjetServiceImpl implements ProjetService {
         MembreEntreprise membreEntrepriseCreateur = null;
 
         if (type == TypeProjet.PERSONAL) {
-            // US06 — Projet personnel : actif immédiatement, pas d'entreprise
+            //  Projet personnel : actif immédiatement, pas d'entreprise
             projet.setEntreprise(null);
             projet.setStatut(StatutProjet.ACTIVE);
 
         } else {
-            // US07 — Projet d'entreprise : PENDING jusqu'à validation ADMIN
+            // Projet d'entreprise : PENDING jusqu'à validation ADMIN
             if (request.getEntrepriseId() == null) {
                 throw new RuntimeException("L'identifiant de l'entreprise est obligatoire pour un projet d'entreprise");
             }
@@ -101,9 +99,7 @@ public class ProjetServiceImpl implements ProjetService {
         return toDto(savedProjet, RoleProjet.MANAGER);
     }
 
-    // ============================================================
-    //  US08 — Valider un projet d'entreprise (ADMIN)
-    // ============================================================
+    // Valider un projet d'entreprise (ADMIN)
     @Override
     @Transactional
     public ProjetResponseDto validerProjet(Long projetId) {
@@ -130,9 +126,7 @@ public class ProjetServiceImpl implements ProjetService {
         return toDto(savedProjet, null);
     }
 
-    // ============================================================
-    //  US08 — Rejeter un projet d'entreprise (ADMIN)
-    // ============================================================
+    // Rejeter un projet d'entreprise (ADMIN)
     @Override
     @Transactional
     public ProjetResponseDto rejeterProjet(Long projetId) {
@@ -157,9 +151,7 @@ public class ProjetServiceImpl implements ProjetService {
         return toDto(savedProjet, null);
     }
 
-    // ============================================================
-    //  Récupérer les détails d'un projet
-    // ============================================================
+    // Récupérer les détails d'un projet
     @Override
     public ProjetResponseDto getProjet(Long projetId) {
 
@@ -177,9 +169,7 @@ public class ProjetServiceImpl implements ProjetService {
         return toDto(projet, membership.getRole());
     }
 
-    // ============================================================
-    //  Récupérer tous les projets de l'utilisateur courant
-    // ============================================================
+    // Récupérer tous les projets de l'utilisateur courant
     @Override
     public List<ProjetResponseDto> getMesProjets() {
 
@@ -251,9 +241,7 @@ public class ProjetServiceImpl implements ProjetService {
                 .collect(Collectors.toList());
     }
 
-    // ============================================================
-    //  US09 — Inviter un membre au projet (MANAGER)
-    // ============================================================
+    // Inviter un membre au projet (MANAGER)
     @Override
     @Transactional
     public void inviterMembreProjet(Long projetId, InviteMembreProjetRequestDto request) {
@@ -309,9 +297,7 @@ public class ProjetServiceImpl implements ProjetService {
         );
     }
 
-    // ============================================================
-    //  Helpers privés
-    // ============================================================
+    // Helpers privés
 
     private void verifierAdminEntreprise(Utilisateur utilisateur, Long entrepriseId) {
         MembreEntreprise membership = membreEntrepriseRepository

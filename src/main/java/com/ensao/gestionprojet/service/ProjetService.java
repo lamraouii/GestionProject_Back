@@ -9,13 +9,13 @@ import java.util.List;
 
 public interface ProjetService {
 
-    /** US06 & US07 — Créer un projet personnel ou d'entreprise */
+    /** Créer un projet personnel ou d'entreprise */
     ProjetResponseDto creerProjet(CreateProjetRequestDto request);
 
-    /** US08 — Valider un projet d'entreprise (ADMIN) */
+    /** Valider un projet d'entreprise (ADMIN) */
     ProjetResponseDto validerProjet(Long projetId);
 
-    /** US08 — Rejeter un projet d'entreprise (ADMIN) */
+    /** Rejeter un projet d'entreprise (ADMIN) */
     ProjetResponseDto rejeterProjet(Long projetId);
 
     /** Récupérer les détails d'un projet */
@@ -30,6 +30,6 @@ public interface ProjetService {
     /** Récupérer les membres acceptés d'un projet */
     List<MemberResponseDto> getMembresProjet(Long projetId);
 
-    /** US09 — Inviter un membre au projet (MANAGER) */
+    /**  Inviter un membre au projet (MANAGER) */
     void inviterMembreProjet(Long projetId, InviteMembreProjetRequestDto request);
 }
