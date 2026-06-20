@@ -57,6 +57,24 @@ public class SprintController {
     /**
      * Récupérer tous les sprints d'un projet
      */
+    @GetMapping("/{sprintId}")
+    public ResponseEntity<SprintResponseDto> getSprintById(
+            @PathVariable Long sprintId
+    ) {
+        SprintResponseDto response = sprintService.getSprintById(sprintId);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{sprintId}/disponibilites")
+    public ResponseEntity<List<DisponibiliteMembreResponseDto>> getDisponibilites(
+            @PathVariable Long sprintId
+    ) {
+        List<DisponibiliteMembreResponseDto> response =
+                sprintService.getDisponibilites(sprintId);
+
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/projet/{projetId}")
     public ResponseEntity<List<SprintResponseDto>> getSprintsProjet(
             @PathVariable Long projetId

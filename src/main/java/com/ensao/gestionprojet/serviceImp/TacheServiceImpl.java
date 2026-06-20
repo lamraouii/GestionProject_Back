@@ -71,6 +71,10 @@ public class TacheServiceImpl implements TacheService {
             if (!sprint.getProjet().getId().equals(projet.getId())) {
                 throw new RuntimeException("Le sprint n'appartient pas à ce projet");
             }
+            if (sprint.getStatut() != StatutSprint.PLANNED) {
+                throw new RuntimeException("Impossible d'ajouter une tache - le sprint est deja active ou cloture");
+            }
+
             tache.setSprint(sprint);
         }
 
@@ -279,7 +283,7 @@ public class TacheServiceImpl implements TacheService {
                 .id(tache.getId())
                 .titre(tache.getTitre())
                 .description(tache.getDescription())
-                .statut(tache.getStatut().name())
+                .statut(tache.getStatut())
                 .priorite(tache.getPriorite().name())
                 .projetId(tache.getProjet().getId())
                 .sprintId(tache.getSprint() != null ? tache.getSprint().getId() : null)

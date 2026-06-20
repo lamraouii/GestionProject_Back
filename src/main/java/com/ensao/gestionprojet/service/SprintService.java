@@ -15,6 +15,10 @@ public interface SprintService {
     /** US15 — Définir la disponibilité des membres (MANAGER) */
     void definirDisponibilite(Long sprintId, List<DisponibiliteMembreRequestDto> request);
 
+    SprintResponseDto getSprintById(Long sprintId);
+
+    List<DisponibiliteMembreResponseDto> getDisponibilites(Long sprintId);
+
     /** Récupérer tous les sprints d'un projet */
     List<SprintResponseDto> getSprintsProjet(Long projetId);
 

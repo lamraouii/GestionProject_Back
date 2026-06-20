@@ -2,6 +2,7 @@ package com.ensao.gestionprojet.service;
 
 import com.ensao.gestionprojet.dto.CreateProjetRequestDto;
 import com.ensao.gestionprojet.dto.InviteMembreProjetRequestDto;
+import com.ensao.gestionprojet.dto.MemberResponseDto;
 import com.ensao.gestionprojet.dto.ProjetResponseDto;
 
 import java.util.List;
@@ -22,6 +23,12 @@ public interface ProjetService {
 
     /** Récupérer tous les projets de l'utilisateur courant */
     List<ProjetResponseDto> getMesProjets();
+
+    /** Récupérer les projets d'une entreprise pour ses membres acceptés */
+    List<ProjetResponseDto> getProjetsEntreprise(Long entrepriseId);
+
+    /** Récupérer les membres acceptés d'un projet */
+    List<MemberResponseDto> getMembresProjet(Long projetId);
 
     /** US09 — Inviter un membre au projet (MANAGER) */
     void inviterMembreProjet(Long projetId, InviteMembreProjetRequestDto request);

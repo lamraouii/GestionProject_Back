@@ -19,6 +19,7 @@ public class ProjetResponseDto {
     private String entrepriseNom;
     private Long createurId;
     private String createurNom;
+    private String role;
     private LocalDate dateDebut;
     private LocalDate dateFin;
     private LocalDateTime dateCreation;

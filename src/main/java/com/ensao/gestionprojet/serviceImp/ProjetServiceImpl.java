@@ -2,11 +2,13 @@ package com.ensao.gestionprojet.serviceImp;
 
 import com.ensao.gestionprojet.dto.CreateProjetRequestDto;
 import com.ensao.gestionprojet.dto.InviteMembreProjetRequestDto;
+import com.ensao.gestionprojet.dto.MemberResponseDto;
 import com.ensao.gestionprojet.dto.ProjetResponseDto;
 import com.ensao.gestionprojet.entity.*;
 import com.ensao.gestionprojet.enums.*;
 import com.ensao.gestionprojet.helpers.AuthHelper;
 import com.ensao.gestionprojet.repository.*;
+import com.ensao.gestionprojet.service.EmailService;
 import com.ensao.gestionprojet.service.ProjetService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +28,7 @@ public class ProjetServiceImpl implements ProjetService {
     private final EntrepriseRepository entrepriseRepository;
     private final UtilisateurRepo utilisateurRepository;
     private final AuthHelper authHelper;
+    private final EmailService emailService;
 
     // ============================================================
     //  US06 & US07 — Créer un projet personnel ou d'entreprise
@@ -46,6 +49,8 @@ public class ProjetServiceImpl implements ProjetService {
         projet.setDateDebut(request.getDateDebut());
         projet.setDateFin(request.getDateFin());
 
+        MembreEntreprise membreEntrepriseCreateur = null;
+
         if (type == TypeProjet.PERSONAL) {
             // US06 — Projet personnel : actif immédiatement, pas d'entreprise
             projet.setEntreprise(null);
@@ -61,14 +66,18 @@ public class ProjetServiceImpl implements ProjetService {
                     .orElseThrow(() -> new RuntimeException("Entreprise introuvable"));
 
             // Vérifier que le créateur est membre ACCEPTED de l'entreprise
-            membreEntrepriseRepository
+            membreEntrepriseCreateur = membreEntrepriseRepository
                     .findByUtilisateurIdAndEntrepriseId(createur.getId(), entreprise.getId())
                     .filter(m -> m.getStatut() == StatutInvitation.ACCEPTED)
                     .orElseThrow(() -> new RuntimeException(
                             "Vous devez être membre accepté de l'entreprise pour créer un projet d'entreprise"));
 
             projet.setEntreprise(entreprise);
-            projet.setStatut(StatutProjet.PENDING);
+            projet.setStatut(
+                    membreEntrepriseCreateur.getRole() == RoleEntreprise.ADMIN
+                            ? StatutProjet.ACTIVE
+                            : StatutProjet.PENDING
+            );
         }
 
         Projet savedProjet = projetRepository.save(projet);
@@ -85,7 +94,11 @@ public class ProjetServiceImpl implements ProjetService {
 
         membreProjetRepository.save(membreProjet);
 
-        return toDto(savedProjet);
+        if (type == TypeProjet.ENTREPRISE && savedProjet.getStatut() == StatutProjet.PENDING) {
+            notifierAdminsProjetEnAttente(savedProjet, createur);
+        }
+
+        return toDto(savedProjet, RoleProjet.MANAGER);
     }
 
     // ============================================================
@@ -114,7 +127,7 @@ public class ProjetServiceImpl implements ProjetService {
         projet.setStatut(StatutProjet.ACTIVE);
         Projet savedProjet = projetRepository.save(projet);
 
-        return toDto(savedProjet);
+        return toDto(savedProjet, null);
     }
 
     // ============================================================
@@ -141,7 +154,7 @@ public class ProjetServiceImpl implements ProjetService {
         projet.setStatut(StatutProjet.REJECTED);
         Projet savedProjet = projetRepository.save(projet);
 
-        return toDto(savedProjet);
+        return toDto(savedProjet, null);
     }
 
     // ============================================================
@@ -156,12 +169,12 @@ public class ProjetServiceImpl implements ProjetService {
                 .orElseThrow(() -> new RuntimeException("Projet introuvable"));
 
         // Vérifier que l'utilisateur est membre du projet
-        membreProjetRepository
+        MembreProjet membership = membreProjetRepository
                 .findByUtilisateurIdAndProjetIdAndStatut(
                         utilisateur.getId(), projetId, StatutInvitation.ACCEPTED)
                 .orElseThrow(() -> new RuntimeException("Accès refusé — vous n'êtes pas membre de ce projet"));
 
-        return toDto(projet);
+        return toDto(projet, membership.getRole());
     }
 
     // ============================================================
@@ -176,7 +189,65 @@ public class ProjetServiceImpl implements ProjetService {
                 .findByUtilisateurIdAndStatut(utilisateur.getId(), StatutInvitation.ACCEPTED);
 
         return memberships.stream()
-                .map(m -> toDto(m.getProjet()))
+                .map(m -> toDto(m.getProjet(), m.getRole()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ProjetResponseDto> getProjetsEntreprise(Long entrepriseId) {
+
+        Utilisateur utilisateur = authHelper.getUtilisateurCourant();
+
+        MembreEntreprise membreEntreprise = membreEntrepriseRepository
+                .findByUtilisateurIdAndEntrepriseId(
+                        utilisateur.getId(),
+                        entrepriseId
+                )
+                .filter(membre -> membre.getStatut() == StatutInvitation.ACCEPTED)
+                .orElseThrow(() -> new RuntimeException("Acces refuse"));
+
+        return projetRepository
+                .findByEntrepriseId(entrepriseId)
+                .stream()
+                .map(projet -> {
+                    RoleProjet role = membreProjetRepository
+                            .findByUtilisateurIdAndProjetIdAndStatut(
+                                    utilisateur.getId(),
+                                    projet.getId(),
+                                    StatutInvitation.ACCEPTED
+                            )
+                            .map(MembreProjet::getRole)
+                            .orElse(null);
+
+                    if (role == null && membreEntreprise.getRole() == RoleEntreprise.ADMIN) {
+                        return toDto(projet, RoleProjet.MANAGER);
+                    }
+
+                    return toDto(projet, role);
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<MemberResponseDto> getMembresProjet(Long projetId) {
+
+        Utilisateur utilisateur = authHelper.getUtilisateurCourant();
+
+        membreProjetRepository
+                .findByUtilisateurIdAndProjetIdAndStatut(
+                        utilisateur.getId(),
+                        projetId,
+                        StatutInvitation.ACCEPTED
+                )
+                .orElseThrow(() -> new RuntimeException("Acces refuse"));
+
+        return membreProjetRepository
+                .findByProjetIdAndStatut(
+                        projetId,
+                        StatutInvitation.ACCEPTED
+                )
+                .stream()
+                .map(this::toMemberDto)
                 .collect(Collectors.toList());
     }
 
@@ -225,12 +296,17 @@ public class ProjetServiceImpl implements ProjetService {
                 .utilisateur(invitedUser)
                 .projet(projet)
                 .role(RoleProjet.MEMBER)
-                .statut(StatutInvitation.ACCEPTED)
+                .statut(StatutInvitation.PENDING)
                 .invitePar(manager)
                 .dateAdhesion(LocalDateTime.now())
                 .build();
 
         membreProjetRepository.save(membreProjet);
+
+        emailService.sendProjectInvitationEmail(
+                invitedUser.getEmail(),
+                projet.getNom()
+        );
     }
 
     // ============================================================
@@ -247,7 +323,25 @@ public class ProjetServiceImpl implements ProjetService {
         }
     }
 
-    private ProjetResponseDto toDto(Projet projet) {
+    private void notifierAdminsProjetEnAttente(Projet projet, Utilisateur createur) {
+
+        membreEntrepriseRepository
+                .findByEntrepriseIdAndStatut(
+                        projet.getEntreprise().getId(),
+                        StatutInvitation.ACCEPTED
+                )
+                .stream()
+                .filter(membre -> membre.getRole() == RoleEntreprise.ADMIN)
+                .map(MembreEntreprise::getUtilisateur)
+                .filter(admin -> !admin.getId().equals(createur.getId()))
+                .forEach(admin -> emailService.sendProjectValidationEmail(
+                        admin.getEmail(),
+                        projet.getNom(),
+                        projet.getEntreprise().getNom()
+                ));
+    }
+
+    private ProjetResponseDto toDto(Projet projet, RoleProjet role) {
         return ProjetResponseDto.builder()
                 .id(projet.getId())
                 .nom(projet.getNom())
@@ -258,9 +352,30 @@ public class ProjetServiceImpl implements ProjetService {
                 .entrepriseNom(projet.getEntreprise() != null ? projet.getEntreprise().getNom() : null)
                 .createurId(projet.getCreateur().getId())
                 .createurNom(projet.getCreateur().getPrenom() + " " + projet.getCreateur().getNom())
+                .role(role != null ? role.name() : null)
                 .dateDebut(projet.getDateDebut())
                 .dateFin(projet.getDateFin())
                 .dateCreation(projet.getDateCreation())
+                .build();
+    }
+
+    private MemberResponseDto toMemberDto(MembreProjet membre) {
+
+        Utilisateur utilisateur = membre.getUtilisateur();
+        Utilisateur inviter = membre.getInvitePar();
+
+        return MemberResponseDto.builder()
+                .id(membre.getId())
+                .userId(utilisateur.getId())
+                .nom(utilisateur.getNom())
+                .prenom(utilisateur.getPrenom())
+                .email(utilisateur.getEmail())
+                .role(membre.getRole().name())
+                .status(membre.getStatut().name())
+                .invitedById(inviter != null ? inviter.getId() : null)
+                .invitedByName(inviter != null ? inviter.getPrenom() + " " + inviter.getNom() : null)
+                .invitedAt(membre.getDateAdhesion())
+                .joinedAt(membre.getDateAdhesion())
                 .build();
     }
 }

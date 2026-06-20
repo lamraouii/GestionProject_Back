@@ -2,6 +2,7 @@ package com.ensao.gestionprojet.controller;
 
 import com.ensao.gestionprojet.dto.CreateProjetRequestDto;
 import com.ensao.gestionprojet.dto.InviteMembreProjetRequestDto;
+import com.ensao.gestionprojet.dto.MemberResponseDto;
 import com.ensao.gestionprojet.dto.ProjetResponseDto;
 import com.ensao.gestionprojet.service.ProjetService;
 import jakarta.validation.Valid;
@@ -77,6 +78,15 @@ public class ProjetController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping("/{id}/members")
+    public ResponseEntity<List<MemberResponseDto>> getMembresProjet(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(
+                projetService.getMembresProjet(id)
+        );
+    }
+
     /**
      * Récupérer tous les projets de l'utilisateur courant
      */
@@ -84,5 +94,14 @@ public class ProjetController {
     public ResponseEntity<List<ProjetResponseDto>> getMesProjets() {
         List<ProjetResponseDto> response = projetService.getMesProjets();
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/entreprise/{entrepriseId}")
+    public ResponseEntity<List<ProjetResponseDto>> getProjetsEntreprise(
+            @PathVariable Long entrepriseId
+    ) {
+        return ResponseEntity.ok(
+                projetService.getProjetsEntreprise(entrepriseId)
+        );
     }
 }

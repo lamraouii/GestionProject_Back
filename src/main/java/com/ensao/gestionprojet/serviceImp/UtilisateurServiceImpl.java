@@ -98,7 +98,7 @@ public class UtilisateurServiceImpl implements UtilisateurService {
                 .nom(savedUser.getNom())
                 .prenom(savedUser.getPrenom())
                 .email(savedUser.getEmail())
-                .message("Compte créé avec succès")
+                .message("Compte créé avec succès. Vérifiez votre email pour confirmer votre compte.")
                 .build();
     }
 
@@ -164,7 +164,7 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         if(!utilisateur.getEstActif()) {
 
             throw new RuntimeException(
-                    "Compte non confirmé"
+                    "Compte non confirmé. Vérifiez votre email."
             );
         }
 

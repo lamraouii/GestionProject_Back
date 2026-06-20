@@ -11,6 +11,8 @@ import com.ensao.gestionprojet.service.SprintService;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import jakarta.annotation.PostConstruct;
+
 
 
 import java.time.LocalDate;
@@ -32,7 +34,13 @@ public class SprintServiceImpl implements SprintService {
 
     private final BurndownSnapshotRepository burndownSnapshotRepository;
 
-    VerifyManager vf = new VerifyManager(membreProjetRepository);
+    private VerifyManager vf;
+
+    @PostConstruct
+    public void init() {
+        this.vf = new VerifyManager(membreProjetRepository);
+    }
+
 
     // ============================================================
     //  US13 — Créer un sprint (MANAGER)
@@ -92,6 +100,10 @@ public class SprintServiceImpl implements SprintService {
         vf.verifierManager(manager.getId(), projet.getId());
 
         // Associer chaque tâche
+        if (sprint.getStatut() != StatutSprint.PLANNED) {
+            throw new RuntimeException("Impossible d'ajouter des taches - le sprint est deja active ou cloture");
+        }
+
         for (Long tacheId : request.getTacheIds()) {
             Tache tache = tacheRepository.findById(tacheId)
                     .orElseThrow(() -> new RuntimeException("Tâche introuvable avec l'ID : " + tacheId));
@@ -132,6 +144,10 @@ public class SprintServiceImpl implements SprintService {
         // Vérifier que l'utilisateur courant est MANAGER du projet
         vf.verifierManager(manager.getId(), projet.getId());
 
+        if (sprint.getStatut() != StatutSprint.PLANNED) {
+            throw new RuntimeException("Impossible de modifier les disponibilites - le sprint est deja active ou cloture");
+        }
+
         for (DisponibiliteMembreRequestDto item : request) {
             Utilisateur targetUser = utilisateurRepository.findById(item.getUtilisateurId())
                     .orElseThrow(() -> new RuntimeException("Utilisateur introuvable avec l'ID : " + item.getUtilisateurId()));
@@ -157,6 +173,50 @@ public class SprintServiceImpl implements SprintService {
     // ============================================================
     //  Récupérer tous les sprints d'un projet
     // ============================================================
+    @Override
+    @Transactional(readOnly = true)
+    public SprintResponseDto getSprintById(Long sprintId) {
+
+        Utilisateur utilisateur = authHelper.getUtilisateurCourant();
+
+        Sprint sprint = sprintRepository.findById(sprintId)
+                .orElseThrow(() -> new RuntimeException("Sprint introuvable"));
+
+        Long projetId = sprint.getProjet().getId();
+
+        membreProjetRepository.findByUtilisateurIdAndProjetIdAndStatut(
+                        utilisateur.getId(), projetId, StatutInvitation.ACCEPTED)
+                .orElseThrow(() -> new RuntimeException("Acces refuse - vous n'etes pas membre de ce projet"));
+
+        List<TacheResponseDto> taches = sprint.getTaches()
+                .stream()
+                .map(this::toTacheDto)
+                .toList();
+
+        return sprintMapper.toDtoWithTasks(sprint, taches);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DisponibiliteMembreResponseDto> getDisponibilites(Long sprintId) {
+
+        Utilisateur utilisateur = authHelper.getUtilisateurCourant();
+
+        Sprint sprint = sprintRepository.findById(sprintId)
+                .orElseThrow(() -> new RuntimeException("Sprint introuvable"));
+
+        Long projetId = sprint.getProjet().getId();
+
+        membreProjetRepository.findByUtilisateurIdAndProjetIdAndStatut(
+                        utilisateur.getId(), projetId, StatutInvitation.ACCEPTED)
+                .orElseThrow(() -> new RuntimeException("Acces refuse - vous n'etes pas membre de ce projet"));
+
+        return disponibiliteMembreRepository.findBySprintId(sprintId)
+                .stream()
+                .map(this::toDisponibiliteDto)
+                .toList();
+    }
+
     @Override
     public List<SprintResponseDto> getSprintsProjet(Long projetId) {
 
@@ -395,6 +455,46 @@ public class SprintServiceImpl implements SprintService {
                         .build();
 
         burndownSnapshotRepository.save(snapshot);
+    }
+
+    private TacheResponseDto toTacheDto(Tache tache) {
+        String assigneNom = null;
+        Long assigneId = null;
+
+        if (tache.getUtilisateurAssigne() != null) {
+            assigneId = tache.getUtilisateurAssigne().getId();
+            assigneNom = tache.getUtilisateurAssigne().getPrenom()
+                    + " " + tache.getUtilisateurAssigne().getNom();
+        }
+
+        return TacheResponseDto.builder()
+                .id(tache.getId())
+                .titre(tache.getTitre())
+                .description(tache.getDescription())
+                .statut(tache.getStatut())
+                .priorite(tache.getPriorite() != null ? tache.getPriorite().name() : null)
+                .projetId(tache.getProjet().getId())
+                .sprintId(tache.getSprint() != null ? tache.getSprint().getId() : null)
+                .utilisateurAssigneId(assigneId)
+                .utilisateurAssigneNom(assigneNom)
+                .storyPoints(tache.getStoryPoints())
+                .dateCreation(tache.getDateCreation())
+                .dateDebutTravail(tache.getDateDebutTravail())
+                .dateCompletion(tache.getDateCompletion())
+                .build();
+    }
+
+    private DisponibiliteMembreResponseDto toDisponibiliteDto(DisponibiliteMembre disponibilite) {
+        Utilisateur utilisateur = disponibilite.getUtilisateur();
+        String utilisateurNom = utilisateur.getPrenom() + " " + utilisateur.getNom();
+
+        return DisponibiliteMembreResponseDto.builder()
+                .id(disponibilite.getId())
+                .sprintId(disponibilite.getSprint().getId())
+                .utilisateurId(utilisateur.getId())
+                .utilisateurNom(utilisateurNom.trim())
+                .heuresDisponibles(disponibilite.getHeuresDisponibles())
+                .build();
     }
 //    private void verifierManager(Long utilisateurId, Long projetId) {
 //        membreProjetRepository.findByUtilisateurIdAndProjetIdAndRole(utilisateurId, projetId, RoleProjet.MANAGER)

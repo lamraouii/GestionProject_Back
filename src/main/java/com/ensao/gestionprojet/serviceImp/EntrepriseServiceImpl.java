@@ -2,6 +2,7 @@ package com.ensao.gestionprojet.serviceImp;
 
 import com.ensao.gestionprojet.dto.CreateEntrepriseRequestDto;
 import com.ensao.gestionprojet.dto.EntrepriseResponseDto;
+import com.ensao.gestionprojet.dto.MemberResponseDto;
 import com.ensao.gestionprojet.entity.Entreprise;
 import com.ensao.gestionprojet.entity.MembreEntreprise;
 import com.ensao.gestionprojet.entity.MembreProjet;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -78,15 +80,71 @@ public class EntrepriseServiceImpl implements EntrepriseService {
         membreEntrepriseRepository.save(membreEntreprise);
 
         // 4. retourner réponse
-        return EntrepriseResponseDto.builder()
-                .id(savedEntreprise.getId())
-                .nom(savedEntreprise.getNom())
-                .description(savedEntreprise.getDescription())
-                .urlLogo(savedEntreprise.getUrlLogo())
-                .role(RoleEntreprise.ADMIN.name())
-                .build();
+        return toDto(savedEntreprise, RoleEntreprise.ADMIN);
     }
 
+    @Override
+    public List<EntrepriseResponseDto> getMesEntreprises() {
+
+        Utilisateur utilisateur = getUtilisateurCourant();
+
+        return membreEntrepriseRepository
+                .findByUtilisateurIdAndStatut(
+                        utilisateur.getId(),
+                        StatutInvitation.ACCEPTED
+                )
+                .stream()
+                .map(membre -> toDto(
+                        membre.getEntreprise(),
+                        membre.getRole()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public EntrepriseResponseDto getEntreprise(Long entrepriseId) {
+
+        Utilisateur utilisateur = getUtilisateurCourant();
+
+        MembreEntreprise membre =
+                membreEntrepriseRepository
+                        .findByUtilisateurIdAndEntrepriseId(
+                                utilisateur.getId(),
+                                entrepriseId
+                        )
+                        .filter(item -> item.getStatut() == StatutInvitation.ACCEPTED)
+                        .orElseThrow(() ->
+                                new RuntimeException("Accès refusé"));
+
+        return toDto(
+                membre.getEntreprise(),
+                membre.getRole()
+        );
+    }
+
+    @Override
+    public List<MemberResponseDto> getMembres(Long entrepriseId) {
+
+        Utilisateur utilisateur = getUtilisateurCourant();
+
+        membreEntrepriseRepository
+                .findByUtilisateurIdAndEntrepriseId(
+                        utilisateur.getId(),
+                        entrepriseId
+                )
+                .filter(item -> item.getStatut() == StatutInvitation.ACCEPTED)
+                .orElseThrow(() ->
+                        new RuntimeException("Acces refuse"));
+
+        return membreEntrepriseRepository
+                .findByEntrepriseIdAndStatut(
+                        entrepriseId,
+                        StatutInvitation.ACCEPTED
+                )
+                .stream()
+                .map(this::toMemberDto)
+                .collect(Collectors.toList());
+    }
 
     @Override
     @Transactional
@@ -151,5 +209,51 @@ public class EntrepriseServiceImpl implements EntrepriseService {
         );
     }
 
+    private Utilisateur getUtilisateurCourant() {
+
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        return utilisateurRepository
+                .findByEmail(email)
+                .orElseThrow(() ->
+                        new RuntimeException("Utilisateur introuvable"));
+    }
+
+    private EntrepriseResponseDto toDto(
+            Entreprise entreprise,
+            RoleEntreprise role
+    ) {
+
+        return EntrepriseResponseDto.builder()
+                .id(entreprise.getId())
+                .nom(entreprise.getNom())
+                .description(entreprise.getDescription())
+                .urlLogo(entreprise.getUrlLogo())
+                .role(role.name())
+                .build();
+    }
+
+    private MemberResponseDto toMemberDto(MembreEntreprise membre) {
+
+        Utilisateur utilisateur = membre.getUtilisateur();
+        Utilisateur inviter = membre.getInvitePar();
+
+        return MemberResponseDto.builder()
+                .id(membre.getId())
+                .userId(utilisateur.getId())
+                .nom(utilisateur.getNom())
+                .prenom(utilisateur.getPrenom())
+                .email(utilisateur.getEmail())
+                .role(membre.getRole().name())
+                .status(membre.getStatut().name())
+                .invitedById(inviter != null ? inviter.getId() : null)
+                .invitedByName(inviter != null ? inviter.getPrenom() + " " + inviter.getNom() : null)
+                .invitedAt(membre.getDateInvitation())
+                .joinedAt(membre.getDateReponse())
+                .build();
+    }
 
 }
