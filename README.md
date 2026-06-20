@@ -9,7 +9,7 @@
 
 ---
 
-## 🚀 Fonctionnalités Principales
+##  Fonctionnalités Principales
 
 *   **Sécurité \& Authentification** :
     *   Inscription avec hachage de mot de passe via BCrypt.
@@ -41,7 +41,7 @@
 
 ---
 
-## 🛠️ Stack Technique
+##  Stack Technique
 
 *   **Langage** : Java 21
 *   **Framework Principal** : Spring Boot 4.0.6
@@ -54,7 +54,7 @@
 
 ---
 
-## 📋 Prérequis
+##  Prérequis
 
 *   **Java Development Kit (JDK)** : Version 21 installé.
 *   **PostgreSQL** : Un serveur PostgreSQL actif.
@@ -62,7 +62,7 @@
 
 ---
 
-## ⚙️ Configuration de l'Application
+##  Configuration de l'Application
 
 La configuration s'effectue dans le fichier [application.properties](file:///c:/Projects/GestionProject_Back/src/main/resources/application.properties) :
 
@@ -95,7 +95,7 @@ jwt.expiration=86400000
 
 ---
 
-## 🚀 Démarrage
+##  Démarrage
 
 Pour compiler et lancer l'application en mode développement :
 
@@ -112,7 +112,7 @@ L'API sera disponible sur : `http://localhost:8080`
 
 ---
 
-## 🧪 Tests d'Intégration
+## Tests d'Intégration
 
 Le projet inclut une suite de tests couvrant les parcours utilisateurs de bout en bout (utilisation d'une base H2 en mémoire pour les tests) :
 
