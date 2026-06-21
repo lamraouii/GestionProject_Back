@@ -9,10 +9,10 @@ import com.ensao.gestionprojet.exception.EmailAlreadyExistsException;
 import com.ensao.gestionprojet.exception.PasswordsDoNotMatchException;
 import com.ensao.gestionprojet.repository.UtilisateurRepo;
 import com.ensao.gestionprojet.security.JwtService;
-import com.ensao.gestionprojet.security.JwtService;
 import com.ensao.gestionprojet.service.EmailService;
 import com.ensao.gestionprojet.service.UtilisateurService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,6 +34,9 @@ public class UtilisateurServiceImpl implements UtilisateurService {
     private final EmailService emailService;
 
     private final JwtService jwtService;
+
+    @Value("${app.backend-url:http://localhost:8080}")
+    private String backendUrl;
 
     // registration
     public RegisterResponseDto register(@RequestBody RegisterRequestDto request){
@@ -84,7 +87,8 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         );
 
         String confirmationLink =
-                "http://localhost:8080/api/auth/confirm?token="
+                backendUrl.replaceAll("/+$", "")
+                        + "/api/auth/confirm?token="
                         + token;
 
         emailService.envoyerEmailConfirmation(
