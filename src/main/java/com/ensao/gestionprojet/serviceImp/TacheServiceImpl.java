@@ -1,18 +1,34 @@
 package com.ensao.gestionprojet.serviceImp;
 
 import com.ensao.gestionprojet.dto.CreateTacheRequestDto;
+import com.ensao.gestionprojet.dto.KanbanBoardDto;
 import com.ensao.gestionprojet.dto.TacheResponseDto;
 import com.ensao.gestionprojet.dto.UpdateStatutTacheRequestDto;
-import com.ensao.gestionprojet.dto.KanbanBoardDto;
-import com.ensao.gestionprojet.entity.*;
-import com.ensao.gestionprojet.enums.*;
+import com.ensao.gestionprojet.entity.BurndownSnapshot;
+import com.ensao.gestionprojet.entity.Projet;
+import com.ensao.gestionprojet.entity.Sprint;
+import com.ensao.gestionprojet.entity.Tache;
+import com.ensao.gestionprojet.entity.Utilisateur;
+import com.ensao.gestionprojet.enums.PrioriteTache;
+import com.ensao.gestionprojet.enums.RoleProjet;
+import com.ensao.gestionprojet.enums.StatutInvitation;
+import com.ensao.gestionprojet.enums.StatutProjet;
+import com.ensao.gestionprojet.enums.StatutSprint;
+import com.ensao.gestionprojet.enums.StatutTache;
 import com.ensao.gestionprojet.helpers.AuthHelper;
-import com.ensao.gestionprojet.repository.*;
+import com.ensao.gestionprojet.helpers.ProjectAccessHelper;
+import com.ensao.gestionprojet.repository.BurndownSnapshotRepository;
+import com.ensao.gestionprojet.repository.MembreProjetRepository;
+import com.ensao.gestionprojet.repository.ProjetRepository;
+import com.ensao.gestionprojet.repository.SprintRepository;
+import com.ensao.gestionprojet.repository.TacheRepository;
+import com.ensao.gestionprojet.repository.UtilisateurRepo;
 import com.ensao.gestionprojet.service.TacheService;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -26,9 +42,10 @@ public class TacheServiceImpl implements TacheService {
     private final MembreProjetRepository membreProjetRepository;
     private final SprintRepository sprintRepository;
     private final UtilisateurRepo utilisateurRepository;
+    private final BurndownSnapshotRepository burndownSnapshotRepository;
     private final AuthHelper authHelper;
+    private final ProjectAccessHelper projectAccessHelper;
 
-    // Créer une tâche (MANAGER)
     @Override
     @Transactional
     public TacheResponseDto creerTache(CreateTacheRequestDto request) {
@@ -38,13 +55,11 @@ public class TacheServiceImpl implements TacheService {
         Projet projet = projetRepository.findById(request.getProjetId())
                 .orElseThrow(() -> new RuntimeException("Projet introuvable"));
 
-        // Vérifier que le projet est ACTIVE
         if (projet.getStatut() != StatutProjet.ACTIVE) {
-            throw new RuntimeException("Impossible de créer des tâches — le projet n'est pas actif");
+            throw new RuntimeException("Impossible de creer des taches - le projet n'est pas actif");
         }
 
-        // Vérifier que l'utilisateur est MANAGER du projet
-        verifierManager(manager.getId(), projet.getId());
+        projectAccessHelper.requireManager(manager, projet);
 
         Tache tache = new Tache();
         tache.setTitre(request.getTitre());
@@ -53,21 +68,18 @@ public class TacheServiceImpl implements TacheService {
         tache.setCreateur(manager);
         tache.setStatut(StatutTache.TODO);
 
-        // Priorité (défaut : MEDIUM)
         if (request.getPriorite() != null) {
             tache.setPriorite(PrioriteTache.valueOf(request.getPriorite().toUpperCase()));
         }
 
-        // Story points
         tache.setStoryPoints(request.getStoryPoints());
 
-        // Sprint (optionnel)
         if (request.getSprintId() != null) {
             Sprint sprint = sprintRepository.findById(request.getSprintId())
                     .orElseThrow(() -> new RuntimeException("Sprint introuvable"));
 
             if (!sprint.getProjet().getId().equals(projet.getId())) {
-                throw new RuntimeException("Le sprint n'appartient pas à ce projet");
+                throw new RuntimeException("Le sprint n'appartient pas a ce projet");
             }
             if (sprint.getStatut() != StatutSprint.PLANNED) {
                 throw new RuntimeException("Impossible d'ajouter une tache - le sprint est deja active ou cloture");
@@ -76,27 +88,27 @@ public class TacheServiceImpl implements TacheService {
             tache.setSprint(sprint);
         }
 
-        // Assignation (optionnelle)
         if (request.getUtilisateurAssigneId() != null) {
             Utilisateur assigne = utilisateurRepository.findById(request.getUtilisateurAssigneId())
-                    .orElseThrow(() -> new RuntimeException("Utilisateur assigné introuvable"));
+                    .orElseThrow(() -> new RuntimeException("Utilisateur assigne introuvable"));
 
-            // Vérifier que l'assigné est membre ACCEPTED du projet
-            membreProjetRepository
-                    .findByUtilisateurIdAndProjetIdAndStatut(
-                            assigne.getId(), projet.getId(), StatutInvitation.ACCEPTED)
-                    .orElseThrow(() -> new RuntimeException(
-                            "L'utilisateur assigné doit être membre accepté du projet"));
+            if (projectAccessHelper.resolveRole(assigne, projet).isEmpty()) {
+                throw new RuntimeException("L'utilisateur assigne doit etre membre accepte du projet");
+            }
 
             tache.setUtilisateurAssigne(assigne);
         }
 
         Tache savedTache = tacheRepository.save(tache);
 
+        if (savedTache.getSprint() != null
+                && savedTache.getSprint().getStatut() == StatutSprint.ACTIVE) {
+            enregistrerSnapshot(savedTache.getSprint());
+        }
+
         return toDto(savedTache);
     }
 
-    //  Assigner une tâche à un membre (MANAGER)
     @Override
     @Transactional
     public TacheResponseDto assignerTache(Long tacheId, Long utilisateurId) {
@@ -104,20 +116,16 @@ public class TacheServiceImpl implements TacheService {
         Utilisateur manager = authHelper.getUtilisateurCourant();
 
         Tache tache = tacheRepository.findById(tacheId)
-                .orElseThrow(() -> new RuntimeException("Tâche introuvable"));
+                .orElseThrow(() -> new RuntimeException("Tache introuvable"));
 
-        // Vérifier que l'utilisateur courant est MANAGER du projet
-        verifierManager(manager.getId(), tache.getProjet().getId());
+        projectAccessHelper.requireManager(manager, tache.getProjet());
 
-        // Vérifier que l'utilisateur cible est membre ACCEPTED du projet
         Utilisateur assigne = utilisateurRepository.findById(utilisateurId)
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
 
-        membreProjetRepository
-                .findByUtilisateurIdAndProjetIdAndStatut(
-                        assigne.getId(), tache.getProjet().getId(), StatutInvitation.ACCEPTED)
-                .orElseThrow(() -> new RuntimeException(
-                        "L'utilisateur doit être membre accepté du projet pour être assigné"));
+        if (projectAccessHelper.resolveRole(assigne, tache.getProjet()).isEmpty()) {
+            throw new RuntimeException("L'utilisateur doit être membre accepté du projet pour être assigné");
+        }
 
         tache.setUtilisateurAssigne(assigne);
         Tache savedTache = tacheRepository.save(tache);
@@ -125,7 +133,6 @@ public class TacheServiceImpl implements TacheService {
         return toDto(savedTache);
     }
 
-    // Mettre à jour le statut d'une tâche (MANAGER ou membre assigné)
     @Override
     @Transactional
     public TacheResponseDto mettreAJourStatut(Long tacheId, UpdateStatutTacheRequestDto request) {
@@ -133,38 +140,37 @@ public class TacheServiceImpl implements TacheService {
         Utilisateur utilisateur = authHelper.getUtilisateurCourant();
 
         Tache tache = tacheRepository.findById(tacheId)
-                .orElseThrow(() -> new RuntimeException("Tâche introuvable"));
+                .orElseThrow(() -> new RuntimeException("Tache introuvable"));
 
-        // Vérifier : l'utilisateur est MANAGER du projet OU l'assigné de la tâche
-        boolean estManager = membreProjetRepository
-                .findByUtilisateurIdAndProjetIdAndRole(
-                        utilisateur.getId(), tache.getProjet().getId(), RoleProjet.MANAGER)
-                .isPresent();
+        if (tache.getSprint() != null && tache.getSprint().getStatut() != StatutSprint.ACTIVE) {
+            throw new RuntimeException("Impossible de modifier le statut - le sprint n'est pas actif");
+        }
+
+        boolean estManager = projectAccessHelper
+                .resolveRole(utilisateur, tache.getProjet())
+                .map(role -> role == RoleProjet.MANAGER)
+                .orElse(false);
 
         boolean estAssigne = tache.getUtilisateurAssigne() != null
                 && tache.getUtilisateurAssigne().getId().equals(utilisateur.getId());
 
         if (!estManager && !estAssigne) {
-            throw new RuntimeException("Seul le Manager ou le membre assigné peut modifier le statut");
+            throw new RuntimeException("Seul le Manager ou le membre assigne peut modifier le statut");
         }
 
         StatutTache nouveauStatut = StatutTache.valueOf(request.getStatut().toUpperCase());
         StatutTache ancienStatut = tache.getStatut();
 
-        // Appliquer le changement de statut avec mise à jour des timestamps métriques
         tache.setStatut(nouveauStatut);
 
-        // TODO → IN_PROGRESS : enregistrer le début du travail
         if (ancienStatut == StatutTache.TODO && nouveauStatut == StatutTache.IN_PROGRESS) {
             tache.setDateDebutTravail(LocalDateTime.now());
         }
 
-        // IN_PROGRESS → DONE : enregistrer la date de complétion
         if (nouveauStatut == StatutTache.DONE && tache.getDateCompletion() == null) {
             tache.setDateCompletion(LocalDateTime.now());
         }
 
-        // Si on repasse en TODO (cas de réouverture), on réinitialise
         if (nouveauStatut == StatutTache.TODO) {
             tache.setDateDebutTravail(null);
             tache.setDateCompletion(null);
@@ -175,17 +181,13 @@ public class TacheServiceImpl implements TacheService {
         return toDto(savedTache);
     }
 
-    // Récupérer toutes les tâches d'un projet
     @Override
     public List<TacheResponseDto> getTachesProjet(Long projetId) {
 
         Utilisateur utilisateur = authHelper.getUtilisateurCourant();
+        Projet projet = getProjetOrThrow(projetId);
 
-        // Vérifier que l'utilisateur est membre du projet
-        membreProjetRepository
-                .findByUtilisateurIdAndProjetIdAndStatut(
-                        utilisateur.getId(), projetId, StatutInvitation.ACCEPTED)
-                .orElseThrow(() -> new RuntimeException("Accès refusé — vous n'êtes pas membre de ce projet"));
+        projectAccessHelper.requireAccess(utilisateur, projet);
 
         return tacheRepository.findByProjetId(projetId)
                 .stream()
@@ -193,16 +195,13 @@ public class TacheServiceImpl implements TacheService {
                 .collect(Collectors.toList());
     }
 
-    // Récupérer les tâches du backlog (sprint_id = NULL)
     @Override
     public List<TacheResponseDto> getTachesBacklog(Long projetId) {
 
         Utilisateur utilisateur = authHelper.getUtilisateurCourant();
+        Projet projet = getProjetOrThrow(projetId);
 
-        membreProjetRepository
-                .findByUtilisateurIdAndProjetIdAndStatut(
-                        utilisateur.getId(), projetId, StatutInvitation.ACCEPTED)
-                .orElseThrow(() -> new RuntimeException("Accès refusé — vous n'êtes pas membre de ce projet"));
+        projectAccessHelper.requireAccess(utilisateur, projet);
 
         return tacheRepository.findByProjetIdAndSprintIsNull(projetId)
                 .stream()
@@ -210,17 +209,13 @@ public class TacheServiceImpl implements TacheService {
                 .collect(Collectors.toList());
     }
 
-    // Obtenir la vue Kanban Board
     @Override
     public KanbanBoardDto getKanbanBoard(Long projetId) {
 
         Utilisateur utilisateur = authHelper.getUtilisateurCourant();
+        Projet projet = getProjetOrThrow(projetId);
 
-        // Vérifier que l'utilisateur est membre ACCEPTED du projet
-        membreProjetRepository
-                .findByUtilisateurIdAndProjetIdAndStatut(
-                        utilisateur.getId(), projetId, StatutInvitation.ACCEPTED)
-                .orElseThrow(() -> new RuntimeException("Accès refusé — vous n'êtes pas membre de ce projet"));
+        projectAccessHelper.requireAccess(utilisateur, projet);
 
         List<Tache> tasks = tacheRepository.findByProjetId(projetId);
 
@@ -246,12 +241,31 @@ public class TacheServiceImpl implements TacheService {
                 .build();
     }
 
-    // Helpers privés
+    private Projet getProjetOrThrow(Long projetId) {
+        return projetRepository.findById(projetId)
+                .orElseThrow(() -> new RuntimeException("Projet introuvable"));
+    }
 
-    private void verifierManager(Long utilisateurId, Long projetId) {
-        membreProjetRepository
-                .findByUtilisateurIdAndProjetIdAndRole(utilisateurId, projetId, RoleProjet.MANAGER)
-                .orElseThrow(() -> new RuntimeException("Seul le Manager du projet peut effectuer cette action"));
+    private void enregistrerSnapshot(Sprint sprint) {
+
+        int remainingPoints = sprint.getTaches()
+                .stream()
+                .filter(t -> t.getStatut() != StatutTache.DONE)
+                .mapToInt(t -> t.getStoryPoints() == null ? 0 : t.getStoryPoints())
+                .sum();
+
+        LocalDate today = LocalDate.now();
+
+        BurndownSnapshot snapshot = burndownSnapshotRepository
+                .findBySprintIdAndDate(sprint.getId(), today)
+                .orElseGet(() -> BurndownSnapshot.builder()
+                        .sprint(sprint)
+                        .date(today)
+                        .build());
+
+        snapshot.setRemainingPoints(remainingPoints);
+
+        burndownSnapshotRepository.save(snapshot);
     }
 
     private TacheResponseDto toDto(Tache tache) {

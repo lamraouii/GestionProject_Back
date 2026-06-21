@@ -5,18 +5,20 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
-import lombok.AllArgsConstructor;   // ✅ requis quand on combine Builder + NoArgsConstructor
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;    // ✅ requis par Hibernate
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
 
 @Entity
 @Getter
+@Setter
 @Builder
-@NoArgsConstructor                  // ✅ constructeur vide pour Hibernate
-@AllArgsConstructor                 // ✅ constructeur complet pour @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class BurndownSnapshot {
 
     @Id

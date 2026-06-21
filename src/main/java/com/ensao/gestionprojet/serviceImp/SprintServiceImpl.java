@@ -1,19 +1,37 @@
 package com.ensao.gestionprojet.serviceImp;
 
-import com.ensao.gestionprojet.dto.*;
-import com.ensao.gestionprojet.entity.*;
-import com.ensao.gestionprojet.enums.*;
+import com.ensao.gestionprojet.dto.AddTachesSprintRequestDto;
+import com.ensao.gestionprojet.dto.BurndownDto;
+import com.ensao.gestionprojet.dto.CreateSprintRequestDto;
+import com.ensao.gestionprojet.dto.DisponibiliteMembreRequestDto;
+import com.ensao.gestionprojet.dto.DisponibiliteMembreResponseDto;
+import com.ensao.gestionprojet.dto.SprintResponseDto;
+import com.ensao.gestionprojet.dto.TacheResponseDto;
+import com.ensao.gestionprojet.dto.VelocityDto;
+import com.ensao.gestionprojet.entity.BurndownSnapshot;
+import com.ensao.gestionprojet.entity.DisponibiliteMembre;
+import com.ensao.gestionprojet.entity.Projet;
+import com.ensao.gestionprojet.entity.Sprint;
+import com.ensao.gestionprojet.entity.Tache;
+import com.ensao.gestionprojet.entity.Utilisateur;
+import com.ensao.gestionprojet.enums.StatutInvitation;
+import com.ensao.gestionprojet.enums.StatutProjet;
+import com.ensao.gestionprojet.enums.StatutSprint;
+import com.ensao.gestionprojet.enums.StatutTache;
 import com.ensao.gestionprojet.helpers.AuthHelper;
-import com.ensao.gestionprojet.helpers.VerifyManager;
+import com.ensao.gestionprojet.helpers.ProjectAccessHelper;
 import com.ensao.gestionprojet.mapper.SprintMapper;
-import com.ensao.gestionprojet.repository.*;
+import com.ensao.gestionprojet.repository.BurndownSnapshotRepository;
+import com.ensao.gestionprojet.repository.DisponibiliteMembreRepository;
+import com.ensao.gestionprojet.repository.MembreProjetRepository;
+import com.ensao.gestionprojet.repository.ProjetRepository;
+import com.ensao.gestionprojet.repository.SprintRepository;
+import com.ensao.gestionprojet.repository.TacheRepository;
+import com.ensao.gestionprojet.repository.UtilisateurRepo;
 import com.ensao.gestionprojet.service.SprintService;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import jakarta.annotation.PostConstruct;
-
-
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -31,18 +49,9 @@ public class SprintServiceImpl implements SprintService {
     private final UtilisateurRepo utilisateurRepository;
     private final AuthHelper authHelper;
     private final SprintMapper sprintMapper;
-
     private final BurndownSnapshotRepository burndownSnapshotRepository;
+    private final ProjectAccessHelper projectAccessHelper;
 
-    private VerifyManager vf;
-
-    @PostConstruct
-    public void init() {
-        this.vf = new VerifyManager(membreProjetRepository);
-    }
-
-
-    // Créer un sprint (MANAGER)
     @Override
     @Transactional
     public SprintResponseDto creerSprint(CreateSprintRequestDto request) {
@@ -52,17 +61,14 @@ public class SprintServiceImpl implements SprintService {
         Projet projet = projetRepository.findById(request.getProjetId())
                 .orElseThrow(() -> new RuntimeException("Projet introuvable"));
 
-        // Vérifier que le projet est ACTIVE
         if (projet.getStatut() != StatutProjet.ACTIVE) {
-            throw new RuntimeException("Impossible de créer un sprint — le projet n'est pas actif");
+            throw new RuntimeException("Impossible de creer un sprint - le projet n'est pas actif");
         }
 
-        // Vérifier que l'utilisateur courant est MANAGER du projet
-        vf.verifierManager(createur.getId(), projet.getId());
+        projectAccessHelper.requireManager(createur, projet);
 
-        // Contrainte métier : dateFin > dateDebut
         if (!request.getDateFin().isAfter(request.getDateDebut())) {
-            throw new RuntimeException("La date de fin doit être strictement supérieure à la date de début");
+            throw new RuntimeException("La date de fin doit etre strictement superieure a la date de debut");
         }
 
         Sprint sprint = Sprint.builder()
@@ -80,38 +86,31 @@ public class SprintServiceImpl implements SprintService {
         return sprintMapper.toDto(savedSprint);
     }
 
-    // Ajouter des tâches au sprint (MANAGER)
     @Override
     @Transactional
     public SprintResponseDto ajouterTaches(Long sprintId, AddTachesSprintRequestDto request) {
 
         Utilisateur manager = authHelper.getUtilisateurCourant();
 
-        Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new RuntimeException("Sprint introuvable"));
-
+        Sprint sprint = getSprintOrThrow(sprintId);
         Projet projet = sprint.getProjet();
 
-        // Vérifier que l'utilisateur courant est MANAGER du projet
-        vf.verifierManager(manager.getId(), projet.getId());
+        projectAccessHelper.requireManager(manager, projet);
 
-        // Associer chaque tâche
         if (sprint.getStatut() != StatutSprint.PLANNED) {
             throw new RuntimeException("Impossible d'ajouter des taches - le sprint est deja active ou cloture");
         }
 
         for (Long tacheId : request.getTacheIds()) {
             Tache tache = tacheRepository.findById(tacheId)
-                    .orElseThrow(() -> new RuntimeException("Tâche introuvable avec l'ID : " + tacheId));
+                    .orElseThrow(() -> new RuntimeException("Tache introuvable avec l'ID : " + tacheId));
 
-            // Vérifier que la tâche appartient au même projet
             if (!tache.getProjet().getId().equals(projet.getId())) {
-                throw new RuntimeException("La tâche " + tache.getTitre() + " n'appartient pas à ce projet");
+                throw new RuntimeException("La tache " + tache.getTitre() + " n'appartient pas a ce projet");
             }
 
-            // Vérifier que la tâche est au statut TODO
             if (tache.getStatut() != StatutTache.TODO) {
-                throw new RuntimeException("Seules les tâches au statut TODO peuvent être ajoutées à un sprint");
+                throw new RuntimeException("Seules les taches au statut TODO peuvent etre ajoutees a un sprint");
             }
 
             tache.setSprint(sprint);
@@ -121,22 +120,16 @@ public class SprintServiceImpl implements SprintService {
         return sprintMapper.toDto(sprint);
     }
 
-
-    // Définir la disponibilité des membres (MANAGER)
     @Override
     @Transactional
     public void definirDisponibilite(Long sprintId, List<DisponibiliteMembreRequestDto> request) {
 
         Utilisateur manager = authHelper.getUtilisateurCourant();
 
-        Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new RuntimeException("Sprint introuvable"));
-
+        Sprint sprint = getSprintOrThrow(sprintId);
         Projet projet = sprint.getProjet();
 
-
-        // Vérifier que l'utilisateur courant est MANAGER du projet
-        vf.verifierManager(manager.getId(), projet.getId());
+        projectAccessHelper.requireManager(manager, projet);
 
         if (sprint.getStatut() != StatutSprint.PLANNED) {
             throw new RuntimeException("Impossible de modifier les disponibilites - le sprint est deja active ou cloture");
@@ -146,12 +139,10 @@ public class SprintServiceImpl implements SprintService {
             Utilisateur targetUser = utilisateurRepository.findById(item.getUtilisateurId())
                     .orElseThrow(() -> new RuntimeException("Utilisateur introuvable avec l'ID : " + item.getUtilisateurId()));
 
-            // Vérifier que l'utilisateur cible est membre ACCEPTED du projet
-            membreProjetRepository.findByUtilisateurIdAndProjetIdAndStatut(
-                            targetUser.getId(), projet.getId(), StatutInvitation.ACCEPTED)
-                    .orElseThrow(() -> new RuntimeException("L'utilisateur " + targetUser.getPrenom() + " " + targetUser.getNom() + " n'est pas membre actif de ce projet"));
+            if (projectAccessHelper.resolveRole(targetUser, projet).isEmpty()) {
+                throw new RuntimeException("L'utilisateur " + targetUser.getPrenom() + " " + targetUser.getNom() + " n'est pas membre actif de ce projet");
+            }
 
-            // Trouver ou créer la disponibilité
             DisponibiliteMembre disponibilite = disponibiliteMembreRepository
                     .findBySprintIdAndUtilisateurId(sprint.getId(), targetUser.getId())
                     .orElseGet(() -> DisponibiliteMembre.builder()
@@ -164,21 +155,14 @@ public class SprintServiceImpl implements SprintService {
         }
     }
 
-    // Récupérer tous les sprints d'un projet
     @Override
     @Transactional(readOnly = true)
     public SprintResponseDto getSprintById(Long sprintId) {
 
         Utilisateur utilisateur = authHelper.getUtilisateurCourant();
+        Sprint sprint = getSprintOrThrow(sprintId);
 
-        Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new RuntimeException("Sprint introuvable"));
-
-        Long projetId = sprint.getProjet().getId();
-
-        membreProjetRepository.findByUtilisateurIdAndProjetIdAndStatut(
-                        utilisateur.getId(), projetId, StatutInvitation.ACCEPTED)
-                .orElseThrow(() -> new RuntimeException("Acces refuse - vous n'etes pas membre de ce projet"));
+        projectAccessHelper.requireAccess(utilisateur, sprint.getProjet());
 
         List<TacheResponseDto> taches = sprint.getTaches()
                 .stream()
@@ -193,15 +177,9 @@ public class SprintServiceImpl implements SprintService {
     public List<DisponibiliteMembreResponseDto> getDisponibilites(Long sprintId) {
 
         Utilisateur utilisateur = authHelper.getUtilisateurCourant();
+        Sprint sprint = getSprintOrThrow(sprintId);
 
-        Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new RuntimeException("Sprint introuvable"));
-
-        Long projetId = sprint.getProjet().getId();
-
-        membreProjetRepository.findByUtilisateurIdAndProjetIdAndStatut(
-                        utilisateur.getId(), projetId, StatutInvitation.ACCEPTED)
-                .orElseThrow(() -> new RuntimeException("Acces refuse - vous n'etes pas membre de ce projet"));
+        projectAccessHelper.requireAccess(utilisateur, sprint.getProjet());
 
         return disponibiliteMembreRepository.findBySprintId(sprintId)
                 .stream()
@@ -214,10 +192,10 @@ public class SprintServiceImpl implements SprintService {
 
         Utilisateur utilisateur = authHelper.getUtilisateurCourant();
 
-        // Vérifier que l'utilisateur est membre ACCEPTED du projet
-        membreProjetRepository.findByUtilisateurIdAndProjetIdAndStatut(
-                        utilisateur.getId(), projetId, StatutInvitation.ACCEPTED)
-                .orElseThrow(() -> new RuntimeException("Accès refusé — vous n'êtes pas membre de ce projet"));
+        Projet projet = projetRepository.findById(projetId)
+                .orElseThrow(() -> new RuntimeException("Projet introuvable"));
+
+        projectAccessHelper.requireAccess(utilisateur, projet);
 
         return sprintRepository.findByProjetId(projetId)
                 .stream()
@@ -225,64 +203,30 @@ public class SprintServiceImpl implements SprintService {
                 .collect(Collectors.toList());
     }
 
-
     @Override
     @Transactional
     public void activerSprint(Long sprintId) {
 
-        // 1. Current user
         Utilisateur utilisateur = authHelper.getUtilisateurCourant();
-        // 2. Sprint
-        Sprint sprint = sprintRepository
-                .findById(sprintId)
-                .orElseThrow(() ->
-                        new RuntimeException("Sprint introuvable"));
+        Sprint sprint = getSprintOrThrow(sprintId);
+        Projet projet = sprint.getProjet();
 
-        Long projetId = sprint.getProjet().getId();
+        projectAccessHelper.requireManager(utilisateur, projet);
 
-        // 3. Verify MANAGER role
-        membreProjetRepository
-                .findByUtilisateurIdAndProjetIdAndRole(
-                        utilisateur.getId(),
-                        projetId,
-                        RoleProjet.MANAGER
-                )
-                .orElseThrow(() ->
-                        new RuntimeException(
-                                "Seul un MANAGER peut activer un sprint"
-                        ));
-
-        // 4. Sprint must be PLANNED
         if (sprint.getStatut() != StatutSprint.PLANNED) {
-
-            throw new RuntimeException(
-                    "Seuls les sprints PLANNED peuvent être activés"
-            );
+            throw new RuntimeException("Seuls les sprints PLANNED peuvent etre actives");
         }
 
-        // 5. Only one ACTIVE sprint per project
         boolean activeSprintExists =
-                sprintRepository.existsByProjetIdAndStatut(
-                        projetId,
-                        StatutSprint.ACTIVE
-                );
+                sprintRepository.existsByProjetIdAndStatut(projet.getId(), StatutSprint.ACTIVE);
 
         if (activeSprintExists) {
-
-            throw new RuntimeException(
-                    "Un sprint actif existe déjà pour ce projet"
-            );
+            throw new RuntimeException("Un sprint actif existe deja pour ce projet");
         }
 
-        // 6. Activate sprint
-        sprint.setStatut(
-                StatutSprint.ACTIVE
-        );
+        sprint.setStatut(StatutSprint.ACTIVE);
         enregistrerSnapshot(sprint);
-
-        sprintRepository.save(
-                sprint
-        );
+        sprintRepository.save(sprint);
     }
 
     @Override
@@ -291,39 +235,19 @@ public class SprintServiceImpl implements SprintService {
 
         Utilisateur utilisateur = authHelper.getUtilisateurCourant();
 
-        membreProjetRepository
-                .findByUtilisateurIdAndProjetId(
-                        utilisateur.getId(),
-                        projetId
-                )
-                .orElseThrow(() ->
-                        new RuntimeException("Accès refusé"));
+        Projet projet = projetRepository.findById(projetId)
+                .orElseThrow(() -> new RuntimeException("Projet introuvable"));
+
+        projectAccessHelper.requireAccess(utilisateur, projet);
 
         Sprint sprint = sprintRepository
-                .findByProjetIdAndStatut(
-                        projetId,
-                        StatutSprint.ACTIVE
-                )
-                .orElseThrow(() ->
-                        new RuntimeException("Aucun sprint actif"));
+                .findByProjetIdAndStatut(projetId, StatutSprint.ACTIVE)
+                .orElseThrow(() -> new RuntimeException("Aucun sprint actif"));
 
         List<TacheResponseDto> taches = sprint.getTaches()
                 .stream()
-                .map(t -> {
-                    TacheResponseDto dto = new TacheResponseDto();
-                    dto.setId(t.getId());
-                    dto.setTitre(t.getTitre());
-                    dto.setStatut(t.getStatut());
-
-                    if (t.getUtilisateurAssigne() != null) {
-                        dto.setUtilisateurAssigneNom(t.getUtilisateurAssigne().getNom());
-                    }
-
-                    return dto;
-                })
+                .map(this::toTacheDto)
                 .toList();
-
-        enregistrerSnapshot(sprint);
 
         return sprintMapper.toDtoWithTasks(sprint, taches);
     }
@@ -332,25 +256,16 @@ public class SprintServiceImpl implements SprintService {
     @Transactional
     public void cloturerSprint(Long sprintId) {
 
-        // 1. user
         Utilisateur user = authHelper.getUtilisateurCourant();
+        Sprint sprint = getSprintOrThrow(sprintId);
+        Projet projet = sprint.getProjet();
 
-        // 2. sprint
-        Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new RuntimeException("Sprint introuvable"));
+        projectAccessHelper.requireManager(user, projet);
 
-        Long projetId = sprint.getProjet().getId();
-
-        // 3. check MANAGER
-        vf.verifierManager(user.getId(), projetId);
-
-
-        // 4. must be ACTIVE
         if (sprint.getStatut() != StatutSprint.ACTIVE) {
-            throw new RuntimeException("Seul un sprint ACTIVE peut être clôturé");
+            throw new RuntimeException("Seul un sprint ACTIVE peut etre cloture");
         }
 
-        // 5. compute velocity
         int velocity = sprint.getTaches()
                 .stream()
                 .filter(t -> t.getStatut() == StatutTache.DONE)
@@ -358,8 +273,6 @@ public class SprintServiceImpl implements SprintService {
                 .sum();
 
         sprint.setVelocite(velocity);
-
-        // 6. close sprint
         sprint.setStatut(StatutSprint.COMPLETED);
 
         enregistrerSnapshot(sprint);
@@ -370,32 +283,16 @@ public class SprintServiceImpl implements SprintService {
     @Transactional(readOnly = true)
     public List<BurndownDto> getBurndownChart(Long sprintId) {
 
-        // 1. user
         Utilisateur user = authHelper.getUtilisateurCourant();
+        Sprint sprint = getSprintOrThrow(sprintId);
 
-        // 2. sprint
-        Sprint sprint = sprintRepository.findById(sprintId)
-                .orElseThrow(() -> new RuntimeException("Sprint introuvable"));
+        projectAccessHelper.requireAccess(user, sprint.getProjet());
 
-        // 3. access check
-        membreProjetRepository.findByUtilisateurIdAndProjetId(
-                user.getId(),
-                sprint.getProjet().getId()
-        ).orElseThrow(() -> new RuntimeException("Accès refusé"));
-
-        // 4. fetch snapshots
-        List<BurndownSnapshot> snapshots =
-                burndownSnapshotRepository.findBySprintIdOrderByDateAsc(sprintId);
-
-        // 5. map to DTO
-        return snapshots.stream()
-                .map(s -> new BurndownDto(
-                        s.getDate(),
-                        s.getRemainingPoints()
-                ))
+        return burndownSnapshotRepository.findBySprintIdOrderByDateAsc(sprintId)
+                .stream()
+                .map(s -> new BurndownDto(s.getDate(), s.getRemainingPoints()))
                 .toList();
     }
-
 
     @Override
     @Transactional(readOnly = true)
@@ -403,46 +300,48 @@ public class SprintServiceImpl implements SprintService {
 
         Utilisateur manager = authHelper.getUtilisateurCourant();
 
-        vf.verifierManager(
-                manager.getId(),
-                projetId
-        );
+        Projet projet = projetRepository.findById(projetId)
+                .orElseThrow(() -> new RuntimeException("Projet introuvable"));
+
+        projectAccessHelper.requireManager(manager, projet);
 
         return sprintRepository
                 .findByProjetId(projetId)
                 .stream()
-                .filter(
-                        sprint ->
-                                sprint.getStatut()
-                                        == StatutSprint.COMPLETED
-                )
-                .map(
-                        sprint ->
-                                VelocityDto.builder()
-                                        .sprintId(sprint.getId())
-                                        .sprintNom(sprint.getNom())
-                                        .velocite(sprint.getVelocite())
-                                        .build()
+                .filter(sprint -> sprint.getStatut() == StatutSprint.COMPLETED)
+                .map(sprint ->
+                        VelocityDto.builder()
+                                .sprintId(sprint.getId())
+                                .sprintNom(sprint.getNom())
+                                .velocite(sprint.getVelocite())
+                                .build()
                 )
                 .toList();
     }
 
-
+    private Sprint getSprintOrThrow(Long sprintId) {
+        return sprintRepository.findById(sprintId)
+                .orElseThrow(() -> new RuntimeException("Sprint introuvable"));
+    }
 
     private void enregistrerSnapshot(Sprint sprint) {
 
         int remainingPoints = sprint.getTaches()
                 .stream()
                 .filter(t -> t.getStatut() != StatutTache.DONE)
-                .mapToInt(Tache::getStoryPoints)
+                .mapToInt(t -> t.getStoryPoints() == null ? 0 : t.getStoryPoints())
                 .sum();
 
-        BurndownSnapshot snapshot =
-                BurndownSnapshot.builder()
+        LocalDate today = LocalDate.now();
+
+        BurndownSnapshot snapshot = burndownSnapshotRepository
+                .findBySprintIdAndDate(sprint.getId(), today)
+                .orElseGet(() -> BurndownSnapshot.builder()
                         .sprint(sprint)
-                        .date(LocalDate.now())
-                        .remainingPoints(remainingPoints)
-                        .build();
+                        .date(today)
+                        .build());
+
+        snapshot.setRemainingPoints(remainingPoints);
 
         burndownSnapshotRepository.save(snapshot);
     }
@@ -486,9 +385,4 @@ public class SprintServiceImpl implements SprintService {
                 .heuresDisponibles(disponibilite.getHeuresDisponibles())
                 .build();
     }
-//    private void verifierManager(Long utilisateurId, Long projetId) {
-//        membreProjetRepository.findByUtilisateurIdAndProjetIdAndRole(utilisateurId, projetId, RoleProjet.MANAGER)
-//                .orElseThrow(() -> new RuntimeException("Seul le Manager du projet peut effectuer cette action"));
-//    }
 }
-

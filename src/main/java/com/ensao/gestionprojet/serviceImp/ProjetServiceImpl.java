@@ -4,10 +4,23 @@ import com.ensao.gestionprojet.dto.CreateProjetRequestDto;
 import com.ensao.gestionprojet.dto.InviteMembreProjetRequestDto;
 import com.ensao.gestionprojet.dto.MemberResponseDto;
 import com.ensao.gestionprojet.dto.ProjetResponseDto;
-import com.ensao.gestionprojet.entity.*;
-import com.ensao.gestionprojet.enums.*;
+import com.ensao.gestionprojet.entity.Entreprise;
+import com.ensao.gestionprojet.entity.MembreEntreprise;
+import com.ensao.gestionprojet.entity.MembreProjet;
+import com.ensao.gestionprojet.entity.Projet;
+import com.ensao.gestionprojet.entity.Utilisateur;
+import com.ensao.gestionprojet.enums.RoleEntreprise;
+import com.ensao.gestionprojet.enums.RoleProjet;
+import com.ensao.gestionprojet.enums.StatutInvitation;
+import com.ensao.gestionprojet.enums.StatutProjet;
+import com.ensao.gestionprojet.enums.TypeProjet;
 import com.ensao.gestionprojet.helpers.AuthHelper;
-import com.ensao.gestionprojet.repository.*;
+import com.ensao.gestionprojet.helpers.ProjectAccessHelper;
+import com.ensao.gestionprojet.repository.EntrepriseRepository;
+import com.ensao.gestionprojet.repository.MembreEntrepriseRepository;
+import com.ensao.gestionprojet.repository.MembreProjetRepository;
+import com.ensao.gestionprojet.repository.ProjetRepository;
+import com.ensao.gestionprojet.repository.UtilisateurRepo;
 import com.ensao.gestionprojet.service.EmailService;
 import com.ensao.gestionprojet.service.ProjetService;
 import jakarta.transaction.Transactional;
@@ -15,7 +28,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,15 +44,14 @@ public class ProjetServiceImpl implements ProjetService {
     private final EntrepriseRepository entrepriseRepository;
     private final UtilisateurRepo utilisateurRepository;
     private final AuthHelper authHelper;
+    private final ProjectAccessHelper projectAccessHelper;
     private final EmailService emailService;
 
-    // Créer un projet personnel ou d'entreprise
     @Override
     @Transactional
     public ProjetResponseDto creerProjet(CreateProjetRequestDto request) {
 
         Utilisateur createur = authHelper.getUtilisateurCourant();
-
         TypeProjet type = TypeProjet.valueOf(request.getType().toUpperCase());
 
         Projet projet = new Projet();
@@ -50,12 +65,9 @@ public class ProjetServiceImpl implements ProjetService {
         MembreEntreprise membreEntrepriseCreateur = null;
 
         if (type == TypeProjet.PERSONAL) {
-            //  Projet personnel : actif immédiatement, pas d'entreprise
             projet.setEntreprise(null);
             projet.setStatut(StatutProjet.ACTIVE);
-
         } else {
-            // Projet d'entreprise : PENDING jusqu'à validation ADMIN
             if (request.getEntrepriseId() == null) {
                 throw new RuntimeException("L'identifiant de l'entreprise est obligatoire pour un projet d'entreprise");
             }
@@ -63,12 +75,11 @@ public class ProjetServiceImpl implements ProjetService {
             Entreprise entreprise = entrepriseRepository.findById(request.getEntrepriseId())
                     .orElseThrow(() -> new RuntimeException("Entreprise introuvable"));
 
-            // Vérifier que le créateur est membre ACCEPTED de l'entreprise
             membreEntrepriseCreateur = membreEntrepriseRepository
                     .findByUtilisateurIdAndEntrepriseId(createur.getId(), entreprise.getId())
                     .filter(m -> m.getStatut() == StatutInvitation.ACCEPTED)
                     .orElseThrow(() -> new RuntimeException(
-                            "Vous devez être membre accepté de l'entreprise pour créer un projet d'entreprise"));
+                            "Vous devez etre membre accepte de l'entreprise pour creer un projet d'entreprise"));
 
             projet.setEntreprise(entreprise);
             projet.setStatut(
@@ -80,7 +91,6 @@ public class ProjetServiceImpl implements ProjetService {
 
         Projet savedProjet = projetRepository.save(projet);
 
-        // Le créateur devient automatiquement MANAGER du projet
         MembreProjet membreProjet = MembreProjet.builder()
                 .utilisateur(createur)
                 .projet(savedProjet)
@@ -99,7 +109,6 @@ public class ProjetServiceImpl implements ProjetService {
         return toDto(savedProjet, RoleProjet.MANAGER);
     }
 
-    // Valider un projet d'entreprise (ADMIN)
     @Override
     @Transactional
     public ProjetResponseDto validerProjet(Long projetId) {
@@ -109,24 +118,21 @@ public class ProjetServiceImpl implements ProjetService {
         Projet projet = projetRepository.findById(projetId)
                 .orElseThrow(() -> new RuntimeException("Projet introuvable"));
 
-        // Vérifier que c'est un projet d'entreprise en PENDING
         if (projet.getType() != TypeProjet.ENTREPRISE) {
-            throw new RuntimeException("Seuls les projets d'entreprise nécessitent une validation");
+            throw new RuntimeException("Seuls les projets d'entreprise necessitent une validation");
         }
         if (projet.getStatut() != StatutProjet.PENDING) {
             throw new RuntimeException("Ce projet n'est pas en attente de validation");
         }
 
-        // Vérifier que l'utilisateur est ADMIN de l'entreprise
         verifierAdminEntreprise(admin, projet.getEntreprise().getId());
 
         projet.setStatut(StatutProjet.ACTIVE);
         Projet savedProjet = projetRepository.save(projet);
 
-        return toDto(savedProjet, null);
+        return toDto(savedProjet, RoleProjet.MANAGER);
     }
 
-    // Rejeter un projet d'entreprise (ADMIN)
     @Override
     @Transactional
     public ProjetResponseDto rejeterProjet(Long projetId) {
@@ -137,7 +143,7 @@ public class ProjetServiceImpl implements ProjetService {
                 .orElseThrow(() -> new RuntimeException("Projet introuvable"));
 
         if (projet.getType() != TypeProjet.ENTREPRISE) {
-            throw new RuntimeException("Seuls les projets d'entreprise nécessitent une validation");
+            throw new RuntimeException("Seuls les projets d'entreprise necessitent une validation");
         }
         if (projet.getStatut() != StatutProjet.PENDING) {
             throw new RuntimeException("Ce projet n'est pas en attente de validation");
@@ -148,10 +154,9 @@ public class ProjetServiceImpl implements ProjetService {
         projet.setStatut(StatutProjet.REJECTED);
         Projet savedProjet = projetRepository.save(projet);
 
-        return toDto(savedProjet, null);
+        return toDto(savedProjet, RoleProjet.MANAGER);
     }
 
-    // Récupérer les détails d'un projet
     @Override
     public ProjetResponseDto getProjet(Long projetId) {
 
@@ -160,16 +165,11 @@ public class ProjetServiceImpl implements ProjetService {
         Projet projet = projetRepository.findById(projetId)
                 .orElseThrow(() -> new RuntimeException("Projet introuvable"));
 
-        // Vérifier que l'utilisateur est membre du projet
-        MembreProjet membership = membreProjetRepository
-                .findByUtilisateurIdAndProjetIdAndStatut(
-                        utilisateur.getId(), projetId, StatutInvitation.ACCEPTED)
-                .orElseThrow(() -> new RuntimeException("Accès refusé — vous n'êtes pas membre de ce projet"));
+        RoleProjet role = projectAccessHelper.requireAccess(utilisateur, projet);
 
-        return toDto(projet, membership.getRole());
+        return toDto(projet, role);
     }
 
-    // Récupérer tous les projets de l'utilisateur courant
     @Override
     public List<ProjetResponseDto> getMesProjets() {
 
@@ -188,11 +188,8 @@ public class ProjetServiceImpl implements ProjetService {
 
         Utilisateur utilisateur = authHelper.getUtilisateurCourant();
 
-        MembreEntreprise membreEntreprise = membreEntrepriseRepository
-                .findByUtilisateurIdAndEntrepriseId(
-                        utilisateur.getId(),
-                        entrepriseId
-                )
+        membreEntrepriseRepository
+                .findByUtilisateurIdAndEntrepriseId(utilisateur.getId(), entrepriseId)
                 .filter(membre -> membre.getStatut() == StatutInvitation.ACCEPTED)
                 .orElseThrow(() -> new RuntimeException("Acces refuse"));
 
@@ -200,18 +197,9 @@ public class ProjetServiceImpl implements ProjetService {
                 .findByEntrepriseId(entrepriseId)
                 .stream()
                 .map(projet -> {
-                    RoleProjet role = membreProjetRepository
-                            .findByUtilisateurIdAndProjetIdAndStatut(
-                                    utilisateur.getId(),
-                                    projet.getId(),
-                                    StatutInvitation.ACCEPTED
-                            )
-                            .map(MembreProjet::getRole)
+                    RoleProjet role = projectAccessHelper
+                            .resolveRole(utilisateur, projet)
                             .orElse(null);
-
-                    if (role == null && membreEntreprise.getRole() == RoleEntreprise.ADMIN) {
-                        return toDto(projet, RoleProjet.MANAGER);
-                    }
 
                     return toDto(projet, role);
                 })
@@ -223,54 +211,53 @@ public class ProjetServiceImpl implements ProjetService {
 
         Utilisateur utilisateur = authHelper.getUtilisateurCourant();
 
-        membreProjetRepository
-                .findByUtilisateurIdAndProjetIdAndStatut(
-                        utilisateur.getId(),
-                        projetId,
-                        StatutInvitation.ACCEPTED
-                )
-                .orElseThrow(() -> new RuntimeException("Acces refuse"));
+        Projet projet = projetRepository.findById(projetId)
+                .orElseThrow(() -> new RuntimeException("Projet introuvable"));
 
-        return membreProjetRepository
-                .findByProjetIdAndStatut(
-                        projetId,
-                        StatutInvitation.ACCEPTED
-                )
+        projectAccessHelper.requireAccess(utilisateur, projet);
+
+        List<MemberResponseDto> members = new ArrayList<>();
+        Set<Long> userIds = new HashSet<>();
+
+        membreProjetRepository
+                .findByProjetIdAndStatut(projetId, StatutInvitation.ACCEPTED)
                 .stream()
-                .map(this::toMemberDto)
-                .collect(Collectors.toList());
+                .forEach(membreProjet -> {
+                    members.add(toMemberDto(membreProjet));
+                    userIds.add(membreProjet.getUtilisateur().getId());
+                });
+
+        if (projet.getType() == TypeProjet.ENTREPRISE && projet.getEntreprise() != null) {
+            membreEntrepriseRepository
+                    .findByEntrepriseIdAndStatut(projet.getEntreprise().getId(), StatutInvitation.ACCEPTED)
+                    .stream()
+                    .filter(membreEntreprise -> membreEntreprise.getRole() == RoleEntreprise.ADMIN)
+                    .filter(membreEntreprise -> !userIds.contains(membreEntreprise.getUtilisateur().getId()))
+                    .map(this::toEntrepriseAdminMemberDto)
+                    .forEach(members::add);
+        }
+
+        return members;
     }
 
-    // Inviter un membre au projet (MANAGER)
     @Override
     @Transactional
     public void inviterMembreProjet(Long projetId, InviteMembreProjetRequestDto request) {
 
-        Utilisateur manager = authHelper.getUtilisateurCourant();
+        Utilisateur inviter = authHelper.getUtilisateurCourant();
 
         Projet projet = projetRepository.findById(projetId)
                 .orElseThrow(() -> new RuntimeException("Projet introuvable"));
 
-        // Vérifier que le projet est ACTIVE
         if (projet.getStatut() != StatutProjet.ACTIVE) {
-            throw new RuntimeException("Impossible d'inviter des membres — le projet n'est pas actif");
+            throw new RuntimeException("Impossible d'inviter des membres - le projet n'est pas actif");
         }
 
-        // Vérifier que l'utilisateur courant est MANAGER du projet
-        membreProjetRepository
-                .findByUtilisateurIdAndProjetIdAndRole(manager.getId(), projetId, RoleProjet.MANAGER)
-                .orElseThrow(() -> new RuntimeException("Seul le Manager peut inviter des membres"));
+        projectAccessHelper.requireManager(inviter, projet);
 
-        // Trouver l'utilisateur à inviter
         Utilisateur invitedUser = utilisateurRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable avec cet email"));
 
-        // Vérifier qu'il n'est pas déjà membre
-        if (membreProjetRepository.findByUtilisateurIdAndProjetId(invitedUser.getId(), projetId).isPresent()) {
-            throw new RuntimeException("Cet utilisateur est déjà membre ou invité au projet");
-        }
-
-        // Pour un projet ENTREPRISE : l'invité doit être membre ACCEPTED de l'entreprise
         if (projet.getType() == TypeProjet.ENTREPRISE) {
             membreEntrepriseRepository
                     .findByUtilisateurIdAndEntrepriseId(invitedUser.getId(), projet.getEntreprise().getId())
@@ -279,32 +266,44 @@ public class ProjetServiceImpl implements ProjetService {
                             "Pour un projet d'entreprise, l'invité doit être membre accepté de l'entreprise"));
         }
 
-        // Créer le membership avec statut ACCEPTED (ajout direct par le MANAGER)
-        MembreProjet membreProjet = MembreProjet.builder()
-                .utilisateur(invitedUser)
-                .projet(projet)
-                .role(RoleProjet.MEMBER)
-                .statut(StatutInvitation.PENDING)
-                .invitePar(manager)
-                .dateAdhesion(LocalDateTime.now())
-                .build();
+        if (projectAccessHelper.resolveRole(invitedUser, projet).isPresent()) {
+            throw new RuntimeException("Cet utilisateur est deja membre du projet");
+        }
+
+        MembreProjet membreProjet = membreProjetRepository
+                .findByUtilisateurIdAndProjetId(invitedUser.getId(), projetId)
+                .map(existingMembership -> {
+                    if (existingMembership.getStatut() != StatutInvitation.REJECTED) {
+                        throw new RuntimeException("Cet utilisateur est deja membre ou invite au projet");
+                    }
+
+                    existingMembership.setRole(RoleProjet.MEMBER);
+                    existingMembership.setStatut(StatutInvitation.PENDING);
+                    existingMembership.setInvitePar(inviter);
+                    existingMembership.setDateAdhesion(LocalDateTime.now());
+
+                    return existingMembership;
+                })
+                .orElseGet(() -> MembreProjet.builder()
+                        .utilisateur(invitedUser)
+                        .projet(projet)
+                        .role(RoleProjet.MEMBER)
+                        .statut(StatutInvitation.PENDING)
+                        .invitePar(inviter)
+                        .dateAdhesion(LocalDateTime.now())
+                        .build());
 
         membreProjetRepository.save(membreProjet);
 
-        emailService.sendProjectInvitationEmail(
-                invitedUser.getEmail(),
-                projet.getNom()
-        );
+        emailService.sendProjectInvitationEmail(invitedUser.getEmail(), projet.getNom());
     }
-
-    // Helpers privés
 
     private void verifierAdminEntreprise(Utilisateur utilisateur, Long entrepriseId) {
         MembreEntreprise membership = membreEntrepriseRepository
                 .findByUtilisateurIdAndEntrepriseId(utilisateur.getId(), entrepriseId)
-                .orElseThrow(() -> new RuntimeException("Accès refusé — vous n'appartenez pas à cette entreprise"));
+                .orElseThrow(() -> new RuntimeException("Acces refuse - vous n'appartenez pas a cette entreprise"));
 
-        if (membership.getRole() != RoleEntreprise.ADMIN) {
+        if (membership.getStatut() != StatutInvitation.ACCEPTED || membership.getRole() != RoleEntreprise.ADMIN) {
             throw new RuntimeException("Seul l'ADMIN de l'entreprise peut effectuer cette action");
         }
     }
@@ -312,10 +311,7 @@ public class ProjetServiceImpl implements ProjetService {
     private void notifierAdminsProjetEnAttente(Projet projet, Utilisateur createur) {
 
         membreEntrepriseRepository
-                .findByEntrepriseIdAndStatut(
-                        projet.getEntreprise().getId(),
-                        StatutInvitation.ACCEPTED
-                )
+                .findByEntrepriseIdAndStatut(projet.getEntreprise().getId(), StatutInvitation.ACCEPTED)
                 .stream()
                 .filter(membre -> membre.getRole() == RoleEntreprise.ADMIN)
                 .map(MembreEntreprise::getUtilisateur)
@@ -362,6 +358,26 @@ public class ProjetServiceImpl implements ProjetService {
                 .invitedByName(inviter != null ? inviter.getPrenom() + " " + inviter.getNom() : null)
                 .invitedAt(membre.getDateAdhesion())
                 .joinedAt(membre.getDateAdhesion())
+                .build();
+    }
+
+    private MemberResponseDto toEntrepriseAdminMemberDto(MembreEntreprise membre) {
+
+        Utilisateur utilisateur = membre.getUtilisateur();
+        Utilisateur inviter = membre.getInvitePar();
+
+        return MemberResponseDto.builder()
+                .id(-membre.getId())
+                .userId(utilisateur.getId())
+                .nom(utilisateur.getNom())
+                .prenom(utilisateur.getPrenom())
+                .email(utilisateur.getEmail())
+                .role(RoleProjet.MANAGER.name())
+                .status(StatutInvitation.ACCEPTED.name())
+                .invitedById(inviter != null ? inviter.getId() : null)
+                .invitedByName(inviter != null ? inviter.getPrenom() + " " + inviter.getNom() : null)
+                .invitedAt(membre.getDateInvitation())
+                .joinedAt(membre.getDateReponse() != null ? membre.getDateReponse() : membre.getDateInvitation())
                 .build();
     }
 }

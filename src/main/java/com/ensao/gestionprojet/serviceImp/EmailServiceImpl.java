@@ -17,6 +17,7 @@ public class EmailServiceImpl implements EmailService {
     private final JavaMailSender mailSender;
 
     @Override
+    @Async
     public void envoyerEmailConfirmation(
             String to,
             String confirmationLink
@@ -36,7 +37,11 @@ public class EmailServiceImpl implements EmailService {
                         + confirmationLink
         );
 
-        mailSender.send(message);
+        try {
+            mailSender.send(message);
+        } catch (MailException exception) {
+            System.err.println("Impossible d'envoyer l'email de confirmation: " + exception.getMessage());
+        }
     }
 
     @Override

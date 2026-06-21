@@ -57,19 +57,31 @@ public class InvitationServiceImpl implements InvitationService {
         Utilisateur invitedUser = utilisateurRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Utilisateur invite introuvable"));
 
-        if (membreEntrepriseRepository
+        MembreEntreprise membre = membreEntrepriseRepository
                 .findByUtilisateurIdAndEntrepriseId(invitedUser.getId(), entrepriseId)
-                .isPresent()) {
-            throw new RuntimeException("Utilisateur deja invite ou membre");
-        }
+                .map(existingMembership -> {
+                    if (existingMembership.getStatut() != StatutInvitation.REJECTED) {
+                        throw new RuntimeException("Utilisateur deja invite ou membre");
+                    }
 
-        MembreEntreprise membre = new MembreEntreprise();
-        membre.setUtilisateur(invitedUser);
-        membre.setEntreprise(entreprise);
-        membre.setRole(RoleEntreprise.MEMBER);
-        membre.setStatut(StatutInvitation.PENDING);
-        membre.setInvitePar(admin);
-        membre.setDateInvitation(LocalDateTime.now());
+                    existingMembership.setRole(RoleEntreprise.MEMBER);
+                    existingMembership.setStatut(StatutInvitation.PENDING);
+                    existingMembership.setInvitePar(admin);
+                    existingMembership.setDateInvitation(LocalDateTime.now());
+                    existingMembership.setDateReponse(null);
+
+                    return existingMembership;
+                })
+                .orElseGet(() -> {
+                    MembreEntreprise newMembership = new MembreEntreprise();
+                    newMembership.setUtilisateur(invitedUser);
+                    newMembership.setEntreprise(entreprise);
+                    newMembership.setRole(RoleEntreprise.MEMBER);
+                    newMembership.setStatut(StatutInvitation.PENDING);
+                    newMembership.setInvitePar(admin);
+                    newMembership.setDateInvitation(LocalDateTime.now());
+                    return newMembership;
+                });
 
         membreEntrepriseRepository.save(membre);
 
