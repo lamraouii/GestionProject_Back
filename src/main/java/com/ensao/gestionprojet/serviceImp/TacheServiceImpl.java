@@ -10,7 +10,6 @@ import com.ensao.gestionprojet.entity.Sprint;
 import com.ensao.gestionprojet.entity.Tache;
 import com.ensao.gestionprojet.entity.Utilisateur;
 import com.ensao.gestionprojet.enums.PrioriteTache;
-import com.ensao.gestionprojet.enums.RoleProjet;
 import com.ensao.gestionprojet.enums.StatutInvitation;
 import com.ensao.gestionprojet.enums.StatutProjet;
 import com.ensao.gestionprojet.enums.StatutSprint;
@@ -146,29 +145,21 @@ public class TacheServiceImpl implements TacheService {
             throw new RuntimeException("Impossible de modifier le statut - le sprint n'est pas actif");
         }
 
-        boolean estManager = projectAccessHelper
-                .resolveRole(utilisateur, tache.getProjet())
-                .map(role -> role == RoleProjet.MANAGER)
-                .orElse(false);
+        projectAccessHelper.requireAccess(utilisateur, tache.getProjet());
 
         boolean estAssigne = tache.getUtilisateurAssigne() != null
                 && tache.getUtilisateurAssigne().getId().equals(utilisateur.getId());
 
-        if (!estManager && !estAssigne) {
-            throw new RuntimeException("Seul le Manager ou le membre assigne peut modifier le statut");
+        if (!estAssigne) {
+            throw new RuntimeException("Seul le membre assigne a cette tache peut modifier son statut");
         }
 
         StatutTache nouveauStatut = StatutTache.valueOf(request.getStatut().toUpperCase());
-        StatutTache ancienStatut = tache.getStatut();
 
         tache.setStatut(nouveauStatut);
 
-        if (ancienStatut == StatutTache.TODO && nouveauStatut == StatutTache.IN_PROGRESS) {
+        if (nouveauStatut == StatutTache.IN_PROGRESS && tache.getDateDebutTravail() == null) {
             tache.setDateDebutTravail(LocalDateTime.now());
-        }
-
-        if (nouveauStatut == StatutTache.DONE && tache.getDateCompletion() == null) {
-            tache.setDateCompletion(LocalDateTime.now());
         }
 
         if (nouveauStatut == StatutTache.TODO) {
@@ -176,7 +167,25 @@ public class TacheServiceImpl implements TacheService {
             tache.setDateCompletion(null);
         }
 
+        if (nouveauStatut == StatutTache.IN_PROGRESS) {
+            tache.setDateCompletion(null);
+        }
+
+        if (nouveauStatut == StatutTache.DONE) {
+            if (tache.getDateDebutTravail() == null) {
+                tache.setDateDebutTravail(LocalDateTime.now());
+            }
+            if (tache.getDateCompletion() == null) {
+                tache.setDateCompletion(LocalDateTime.now());
+            }
+        }
+
         Tache savedTache = tacheRepository.save(tache);
+
+        if (savedTache.getSprint() != null
+                && savedTache.getSprint().getStatut() == StatutSprint.ACTIVE) {
+            enregistrerSnapshot(savedTache.getSprint());
+        }
 
         return toDto(savedTache);
     }
