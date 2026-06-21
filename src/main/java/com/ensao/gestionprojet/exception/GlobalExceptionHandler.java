@@ -10,6 +10,21 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(AuthException.class)
+    public ResponseEntity<Map<String, String>>
+    handleAuthException(
+            AuthException ex
+    ) {
+
+        Map<String, String> error = new HashMap<>();
+        error.put("message", ex.getMessage());
+
+        return new ResponseEntity<>(
+                error,
+                ex.getStatus()
+        );
+    }
+
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<Map<String, String>>
     handleEmailAlreadyExists(

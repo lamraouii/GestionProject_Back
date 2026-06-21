@@ -5,6 +5,7 @@ import com.ensao.gestionprojet.dto.LoginResponseDto;
 import com.ensao.gestionprojet.dto.RegisterRequestDto;
 import com.ensao.gestionprojet.dto.RegisterResponseDto;
 import com.ensao.gestionprojet.entity.Utilisateur;
+import com.ensao.gestionprojet.exception.AuthException;
 import com.ensao.gestionprojet.exception.EmailAlreadyExistsException;
 import com.ensao.gestionprojet.exception.PasswordsDoNotMatchException;
 import com.ensao.gestionprojet.repository.UtilisateurRepo;
@@ -13,6 +14,7 @@ import com.ensao.gestionprojet.service.EmailService;
 import com.ensao.gestionprojet.service.UtilisateurService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -160,15 +162,17 @@ public class UtilisateurServiceImpl implements UtilisateurService {
                                 request.getEmail()
                         )
                         .orElseThrow(() ->
-                                new RuntimeException(
-                                        "Email incorrect"
+                                new AuthException(
+                                        "Email incorrect",
+                                        HttpStatus.UNAUTHORIZED
                                 )
                         );
 
         if(!utilisateur.getEstActif()) {
 
-            throw new RuntimeException(
-                    "Compte non confirmé. Vérifiez votre email."
+            throw new AuthException(
+                    "Compte non confirme. Verifiez votre email.",
+                    HttpStatus.FORBIDDEN
             );
         }
 
@@ -180,8 +184,9 @@ public class UtilisateurServiceImpl implements UtilisateurService {
 
         if(!passwordMatches) {
 
-            throw new RuntimeException(
-                    "Mot de passe incorrect"
+            throw new AuthException(
+                    "Mot de passe incorrect",
+                    HttpStatus.UNAUTHORIZED
             );
         }
 
