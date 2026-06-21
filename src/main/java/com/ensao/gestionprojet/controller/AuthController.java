@@ -4,6 +4,7 @@ import com.ensao.gestionprojet.dto.LoginRequestDto;
 import com.ensao.gestionprojet.dto.LoginResponseDto;
 import com.ensao.gestionprojet.dto.RegisterRequestDto;
 import com.ensao.gestionprojet.dto.RegisterResponseDto;
+import com.ensao.gestionprojet.dto.ResendConfirmationRequestDto;
 import com.ensao.gestionprojet.service.UtilisateurService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +35,13 @@ public class AuthController {
             @RequestBody LoginRequestDto request
     ) {
         return utilisateurService.login(request);
+    }
+
+    @PostMapping("/resend-confirmation")
+    public ResponseEntity<RegisterResponseDto> resendConfirmation(
+            @RequestBody ResendConfirmationRequestDto request
+    ) {
+        return ResponseEntity.ok(utilisateurService.resendConfirmationEmail(request));
     }
 
 }

@@ -4,6 +4,7 @@ import com.ensao.gestionprojet.dto.LoginRequestDto;
 import com.ensao.gestionprojet.dto.LoginResponseDto;
 import com.ensao.gestionprojet.dto.RegisterRequestDto;
 import com.ensao.gestionprojet.dto.RegisterResponseDto;
+import com.ensao.gestionprojet.dto.ResendConfirmationRequestDto;
 import com.ensao.gestionprojet.entity.Utilisateur;
 import com.ensao.gestionprojet.exception.AuthException;
 import com.ensao.gestionprojet.exception.EmailAlreadyExistsException;
@@ -88,10 +89,7 @@ public class UtilisateurServiceImpl implements UtilisateurService {
                 confirmationToken
         );
 
-        String confirmationLink =
-                backendUrl.replaceAll("/+$", "")
-                        + "/api/auth/confirm?token="
-                        + token;
+        String confirmationLink = buildConfirmationLink(token);
 
         emailService.envoyerEmailConfirmation(
                 savedUser.getEmail(),
@@ -105,6 +103,58 @@ public class UtilisateurServiceImpl implements UtilisateurService {
                 .prenom(savedUser.getPrenom())
                 .email(savedUser.getEmail())
                 .message("Compte créé avec succès. Vérifiez votre email pour confirmer votre compte.")
+                .build();
+    }
+
+    @Override
+    public RegisterResponseDto resendConfirmationEmail(ResendConfirmationRequestDto request) {
+
+        if (request.getEmail() == null || request.getEmail().isBlank()) {
+            throw new AuthException(
+                    "Email obligatoire pour renvoyer la confirmation.",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        Utilisateur utilisateur = utilisateurRepo
+                .findByEmail(request.getEmail().trim())
+                .orElseThrow(() -> new AuthException(
+                        "Email introuvable",
+                        HttpStatus.NOT_FOUND
+                ));
+
+        if (utilisateur.getEstActif()) {
+            throw new AuthException(
+                    "Ce compte est deja confirme. Vous pouvez vous connecter.",
+                    HttpStatus.BAD_REQUEST
+            );
+        }
+
+        String token = UUID.randomUUID().toString();
+
+        ConfirmationToken confirmationToken = confirmationTokenRepository
+                .findByUtilisateurId(utilisateur.getId())
+                .orElseGet(() -> ConfirmationToken.builder()
+                        .utilisateur(utilisateur)
+                        .build());
+
+        confirmationToken.setToken(token);
+        confirmationToken.setExpirationDate(LocalDateTime.now().plusHours(24));
+        confirmationToken.setUtilise(false);
+
+        confirmationTokenRepository.save(confirmationToken);
+
+        emailService.envoyerEmailConfirmation(
+                utilisateur.getEmail(),
+                buildConfirmationLink(token)
+        );
+
+        return RegisterResponseDto.builder()
+                .id(utilisateur.getId())
+                .nom(utilisateur.getNom())
+                .prenom(utilisateur.getPrenom())
+                .email(utilisateur.getEmail())
+                .message("Email de confirmation renvoye. Verifiez votre boite de reception.")
                 .build();
     }
 
@@ -199,6 +249,12 @@ public class UtilisateurServiceImpl implements UtilisateurService {
                 .token(token)
                 .message("Connexion réussie")
                 .build();
+    }
+
+    private String buildConfirmationLink(String token) {
+        return backendUrl.replaceAll("/+$", "")
+                + "/api/auth/confirm?token="
+                + token;
     }
 
 }
