@@ -185,10 +185,10 @@ public class DashboardAndKanbanScenariosTest {
                 .andExpect(jsonPath("$[?(@.utilisateurId == " + userMember.getId() + ")].totalTaches").value(2));
 
         // 2. Fail for external user
-        assertThrows(Exception.class, () -> {
-            mockMvc.perform(get("/api/dashboard/" + projId + "/workload")
-                            .header("Authorization", tokenExternal));
-        });
+        mockMvc.perform(get("/api/dashboard/" + projId + "/workload")
+                        .header("Authorization", tokenExternal))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").exists());
     }
 
     // =========================================================================
@@ -236,10 +236,10 @@ public class DashboardAndKanbanScenariosTest {
                 .andExpect(jsonPath("$.cycleTimeMoyenHeures").value(18.0));
 
         // 2. Fail for external user
-        assertThrows(Exception.class, () -> {
-            mockMvc.perform(get("/api/dashboard/" + projId + "/metriques")
-                            .header("Authorization", tokenExternal));
-        });
+        mockMvc.perform(get("/api/dashboard/" + projId + "/metriques")
+                        .header("Authorization", tokenExternal))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").exists());
     }
 
     // =========================================================================
@@ -289,9 +289,9 @@ public class DashboardAndKanbanScenariosTest {
                 .andExpect(jsonPath("$.done.length()").value(1));
 
         // 2. Fail for external user
-        assertThrows(Exception.class, () -> {
-            mockMvc.perform(get("/api/taches/kanban/" + projId)
-                            .header("Authorization", tokenExternal));
-        });
+        mockMvc.perform(get("/api/taches/kanban/" + projId)
+                        .header("Authorization", tokenExternal))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").exists());
     }
 }

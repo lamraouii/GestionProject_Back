@@ -230,11 +230,10 @@ public class UserScenariosTest {
 
         // 2. Scenario 7: A non-admin (like userMember) attempts to validate.
         // It should throw an exception/fail.
-        Exception exception = assertThrows(Exception.class, () -> {
-            mockMvc.perform(put("/api/projets/" + finalProj.getId() + "/valider")
-                            .header("Authorization", tokenMember));
-        });
-        assertTrue(exception.getCause().getMessage().contains("Seul l'ADMIN de l'entreprise peut effectuer cette action"));
+        mockMvc.perform(put("/api/projets/" + finalProj.getId() + "/valider")
+                        .header("Authorization", tokenMember))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").exists());
 
         // Verify status remains PENDING in DB
         assertEquals(StatutProjet.PENDING, projetRepository.findById(finalProj.getId()).get().getStatut());
@@ -292,13 +291,12 @@ public class UserScenariosTest {
         Map<String, Object> externalInviteBody = new HashMap<>();
         externalInviteBody.put("email", userExternal.getEmail());
 
-        Exception exception = assertThrows(Exception.class, () -> {
-            mockMvc.perform(post("/api/projets/" + finalProj.getId() + "/invite")
-                            .header("Authorization", tokenManager)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(externalInviteBody)));
-        });
-        assertTrue(exception.getCause().getMessage().contains("Pour un projet d'entreprise, l'invité doit être membre accepté de l'entreprise"));
+        mockMvc.perform(post("/api/projets/" + finalProj.getId() + "/invite")
+                        .header("Authorization", tokenManager)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(externalInviteBody)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").exists());
 
         // Check D is not added
         assertFalse(membreProjetRepository.findByUtilisateurIdAndProjetId(userExternal.getId(), finalProj.getId()).isPresent());
@@ -368,10 +366,9 @@ public class UserScenariosTest {
                 .andExpect(jsonPath("$.utilisateurAssigneNom").value("Member Test"));
 
         // 3. Scenario 7: Try to assign the task to User D (userExternal, who is NOT in the project)
-        Exception exception = assertThrows(Exception.class, () -> {
-            mockMvc.perform(put("/api/taches/" + taskId + "/assigner/" + userExternal.getId())
-                            .header("Authorization", tokenManager));
-        });
-        assertTrue(exception.getCause().getMessage().contains("L'utilisateur doit être membre accepté du projet pour être assigné"));
+        mockMvc.perform(put("/api/taches/" + taskId + "/assigner/" + userExternal.getId())
+                        .header("Authorization", tokenManager))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").exists());
     }
 }

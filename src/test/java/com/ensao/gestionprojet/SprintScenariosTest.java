@@ -159,21 +159,21 @@ public class SprintScenariosTest {
                 .andExpect(jsonPath("$.statut").value("PLANNED"));
 
         // 2. Fail when user is member but not manager
-        assertThrows(Exception.class, () -> {
-            mockMvc.perform(post("/api/sprints")
-                            .header("Authorization", tokenMember)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(body)));
-        });
+        mockMvc.perform(post("/api/sprints")
+                        .header("Authorization", tokenMember)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").exists());
 
         // 3. Fail when dateFin <= dateDebut
         body.put("dateFin", LocalDate.now().toString());
-        assertThrows(Exception.class, () -> {
-            mockMvc.perform(post("/api/sprints")
-                            .header("Authorization", tokenManager)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(body)));
-        });
+        mockMvc.perform(post("/api/sprints")
+                        .header("Authorization", tokenManager)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").exists());
     }
 
 
@@ -230,20 +230,20 @@ public class SprintScenariosTest {
         Map<String, Object> ipBody = new HashMap<>();
         ipBody.put("tacheIds", Collections.singletonList(ipTaskId));
 
-        assertThrows(Exception.class, () -> {
-            mockMvc.perform(post("/api/sprints/" + sprintId + "/taches")
-                            .header("Authorization", tokenManager)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(ipBody)));
-        });
+        mockMvc.perform(post("/api/sprints/" + sprintId + "/taches")
+                        .header("Authorization", tokenManager)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(ipBody)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").exists());
 
         // 3. Fail when non-manager tries to add task
-        assertThrows(Exception.class, () -> {
-            mockMvc.perform(post("/api/sprints/" + sprintId + "/taches")
-                            .header("Authorization", tokenMember)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(body)));
-        });
+        mockMvc.perform(post("/api/sprints/" + sprintId + "/taches")
+                        .header("Authorization", tokenMember)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").exists());
     }
 
 
@@ -285,19 +285,20 @@ public class SprintScenariosTest {
         availExt.put("utilisateurId", userExternal.getId());
         availExt.put("heuresDisponibles", 35);
 
-        assertThrows(Exception.class, () -> {
-            mockMvc.perform(post("/api/sprints/" + sprintId + "/disponibilites")
-                            .header("Authorization", tokenManager)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(Collections.singletonList(availExt))));
-        });
+        mockMvc.perform(post("/api/sprints/" + sprintId + "/disponibilites")
+                        .header("Authorization", tokenManager)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Collections.singletonList(availExt))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").exists());
 
         // 3. Fail when non-manager tries to set availability
-        assertThrows(Exception.class, () -> {
-            mockMvc.perform(post("/api/sprints/" + sprintId + "/disponibilites")
-                            .header("Authorization", tokenMember)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(Collections.singletonList(avail1))));
-        });
+        mockMvc.perform(post("/api/sprints/" + sprintId + "/disponibilites")
+                        .header("Authorization", tokenMember)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Collections.singletonList(avail1)))
+                )
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").exists());
     }
 }
